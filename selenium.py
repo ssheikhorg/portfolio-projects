@@ -25,4 +25,6 @@ def automation():
     time.sleep(4)
     email.send_keys("shsheikhbd@gmail.com")
 
-automation()
+
+if __name__ == '__main__':
+    automation()
