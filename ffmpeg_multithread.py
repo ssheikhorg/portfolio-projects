@@ -2,7 +2,7 @@ from ffmpeg_streaming import Formats
 import ffmpeg_streaming
 import time
 from threading import current_thread
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 from pathlib import Path
 
 
@@ -28,6 +28,7 @@ def dash_func(key, value):
 
 
 def main(videos):
+    # Multi Threading
     with ThreadPoolExecutor(max_workers=len(videos)) as executor:
         hls_transcode = {executor.submit(hls_func, k, v): (k, v) for k, v in videos.items()}
         for hls in as_completed(hls_transcode):
@@ -38,10 +39,26 @@ def main(videos):
             k, v = dash_transcode[dash]
             print('k: ', k, 'v: ', v)
 
+"""
+    # Multi Processing
+    with ProcessPoolExecutor(max_workers=len(videos)) as executor:
+        hls_transcode = {executor.submit(hls_func, k, v): (k, v) for k, v in videos.items()}
+        for hls in as_completed(hls_transcode):
+            k, v = hls_transcode[hls]
+            print('k: ', k, 'v: ', v)
+
+        dash_transcode = {executor.submit(dash_func, k, v): (k, v) for k, v in videos.items()}
+        for dash in as_completed(dash_transcode):
+            k, v = dash_transcode[dash]
+            print('k: ', k, 'v: ', v)
+"""
 
 if __name__ == "__main__":
     video_lists = {
-        0: '30_sec_1080p_wc.mp4',
-        1: '30_sec_1080p_wc.mp4',
+        'one': '30_sec_1080p_wc.mp4',
+        'two': '30_sec_1080p_wc.mp4',
+        'three': '30_sec_1080p_wc.mp4',
+        'four': '30_sec_1080p_wc.mp4',
+        'five': '30_sec_1080p_wc.mp4',
     }
     main(video_lists)
