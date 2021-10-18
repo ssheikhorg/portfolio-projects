@@ -8,7 +8,8 @@ from pathlib import Path
 
 class Transcode:
 
-    def hls(self, key, value):
+    @staticmethod
+    def hls(key, value):
         start_time = time.perf_counter()
         hls_video = ffmpeg_streaming.input(value)
         hls = hls_video.hls(Formats.h264(), hls_time=5.5, start_number=0)
@@ -17,7 +18,8 @@ class Transcode:
         print("Executing thread name :", current_thread().getName())
         print(f"--- HLS finished in: {round(time.perf_counter() - start_time, 2)} seconds ---")
 
-    def dash(self, key, value):
+    @staticmethod
+    def dash(key, value):
         start_time = time.perf_counter()
         dash_video = ffmpeg_streaming.input(value)
         dash = dash_video.dash(Formats.h264())
@@ -41,9 +43,10 @@ def main(videos):
             k, v = dash_transcode[dash]
             print('k: ', k, 'v: ', v)
 
+
 if __name__ == "__main__":
     video_lists = {
-        0 : '30_sec_1080p_wc.mp4',
-        1 : '30_sec_1080p_wc.mp4',
+        0: '30_sec_1080p_wc.mp4',
+        1: '30_sec_1080p_wc.mp4',
     }
     main(video_lists)
