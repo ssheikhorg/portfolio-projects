@@ -22,12 +22,13 @@ if __name__ == '__main__':
     start = time.time()
 
     thread1.start()
-    thread2.start()
-    thread3.start()
-
     thread1.join()
     print(f'First thread total time: {time.time() - start}')
+    thread2.start()
     thread2.join()
     print(f'Second thread total time: {time.time() - start}')
+    thread3.start()
     thread3.join()
     print(f'Third thread total time: {time.time() - start}')
+
+
