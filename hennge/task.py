@@ -13,5 +13,3 @@ if __name__ == "__main__":
     print(sum_of_squares([3, -1, 1, 14]))
     print(sum_of_squares([5]))
     print(sum_of_squares([9, 6, -53, 32, 16]))
-
-
