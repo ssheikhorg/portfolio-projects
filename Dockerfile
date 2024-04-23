@@ -16,7 +16,6 @@ COPY ./src /app/src
 COPY ./requirements.txt /app
 
 # Install any needed dependencies specified in requirements.txt
-# Install any needed dependencies specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt python-multipart
 
 
