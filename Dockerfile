@@ -9,15 +9,14 @@ ENV REDIS_DB=0
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the FastAPI application from the src directory into the container at /app/src
-COPY ./src /app/src
-
 # Copy the requirements.txt file into the container at /app
 COPY ./requirements.txt /app
 
 # Install any needed dependencies specified in requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt python-multipart
+RUN pip install --no-cache-dir -r requirements.txt python-multipart uvicorn
 
+# Copy the src directory into the container at /app/src
+COPY ./src /app/src
 
 # Expose the port where the FastAPI app will run
 EXPOSE 8000
