@@ -1,8 +1,9 @@
 import logging
 import inspect
+import datetime
 
 # Initialize logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def logs(level, message, detail=None):
     """
