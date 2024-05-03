@@ -1,75 +1,85 @@
 from fastapi import HTTPException, status, File, UploadFile
 from PIL import Image
 from io import BytesIO
-from PyPDF2 import PdfReader, PdfWriter
+from pikepdf import Pdf, PdfError
+import magic 
 from src.utils.Logging import logs
 
-def validate_file_content(file: UploadFile = File(...)):
+def get_mime_type(file: BytesIO):
     """
-    This function validates the MIME type of the uploaded file.
-    If the MIME type is not in the allowed formats, it logs a warning and raises an HTTPException.
-    If the MIME type is valid, it logs an info message and returns the file.
+    Determines MIME type of file based on its content using magic
     """
-    content_type = file.content_type
-    mime_type, sub_type, *_ = content_type.split("/")
-    allowed_formats = ["application/pdf", "image/jpeg", "image/png", "image/gif", "image/pjpeg", "application/octet-stream"]
-    
-    if f"{mime_type}/{sub_type}" not in allowed_formats:
-        logs('warning', f"Invalid file format: {mime_type}/{sub_type}")
+    file.seek(0) 
+    mime_type = magic.from_buffer(file.read(2048), mime=True)
+    file.seek(0) 
+    return mime_type
+
+def validate_mime_type(file: UploadFile, expected_mime_type: str):
+    """
+    Validates MIME type of file against expected formats using content sniffing.
+    Raises HTTPException for unsupported or mismatched formats.
+    """
+    actual_mime_type = get_mime_type(file.file)
+    if actual_mime_type != expected_mime_type:
+        logs('warning', f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid file format: {mime_type}/{sub_type}. File must be in PDF or image format (JPEG, PNG, GIF, JFIF).",
+            detail=f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}."
         )
-    logs('info', f"File format validated: {mime_type}/{sub_type}")
-    return file
+    logs('info', f"MIME type validated based on content: {actual_mime_type}")
+
+async def sanitize_pdf(file: UploadFile):
+    """
+    Sanitizes PDF files using pikepdf to remove potential harmful content and metadata.
+    """
+    try:
+        with Pdf.open(file.file) as pdf:
+            pdf.remove_unsafe_content()
+            output_pdf = BytesIO()
+            pdf.save(output_pdf)
+            output_pdf.seek(0)
+            logs('info', "PDF sanitization successful: harmful content removed.")
+        return UploadFile(filename=file.filename, file=output_pdf)
+    except PdfError as e:
+        logs('critical', f"PDF sanitization failed: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"PDF sanitization error: {str(e)}")
+
+async def sanitize_image(file: UploadFile):
+    """
+    Sanitizes image files by resaving them to strip out potential embedded harmful content and metadata.
+    """
+    try:
+        with Image.open(file.file) as image:
+            output_image = BytesIO()
+            format_to_use = 'JPEG' if image.format in ['JPEG', 'JFIF', 'PJPEG'] else image.format
+            image.save(output_image, format=format_to_use)
+            output_image.seek(0)
+            logs('info', "Image sanitization successful: metadata and potential threats removed.")
+        return UploadFile(filename=file.filename, file=output_image)
+    except IOError as e:
+        logs('critical', f"Image sanitization failed: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Image sanitization error: {str(e)}")
 
 async def sanitize_file_content(file: UploadFile = File(...)):
     """
-    This function sanitizes the uploaded file based on its format.
-    It sanitizes the file, logs an info message, and returns the sanitized file.
-    If an error occurs during sanitization, it logs a critical error and raises an HTTPException.
+    Determines file type and executes the appropriate sanitization function based on MIME type.
     """
     file_extension = file.filename.split(".")[-1].lower()
+    mime_map = {
+        "pdf": "application/pdf",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "jfif": "image/jpeg",
+        "pjpeg": "image/jpeg",
+        "png": "image/png"
+    }
+    expected_mime_type = mime_map.get(file_extension, "application/octet-stream")
+    validate_mime_type(file, expected_mime_type)
 
     if file_extension == "pdf":
-        try:
-            with file.file as f:
-                f.seek(0)
-                reader = PdfReader(f)
-                writer = PdfWriter()
-
-                for page in reader.pages:
-                    writer.add_page(page)
-
-                output_pdf = BytesIO()
-                writer.write(output_pdf)
-                output_pdf.seek(0)
-                sanitized_file = UploadFile(filename=file.filename, file=output_pdf)
-
-                logs('info', "PDF sanitization successful!")
-        except Exception as e:
-            logs('critical', f"PDF sanitization failed due to error: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid PDF file. Error: {str(e)}",
-            )
+        sanitized_file = await sanitize_pdf(file)
     else:
-        try:
-            with file.file as f:
-                image = Image.open(f)
-                output_image = BytesIO()
-                # Treat 'jfif' files as 'jpeg' files when saving the image
-                image_format = 'JPEG' if file_extension == 'jfif' else file_extension.upper()
-                image.save(output_image, format=image_format)
-                output_image.seek(0)
-                sanitized_file = UploadFile(filename=file.filename, file=output_image)
-
-                logs('info', "Image sanitization successful!")
-        except IOError as e:
-            logs('critical', f"Image sanitization failed due to error: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid image file. Error: {str(e)}",
-            )
-
+        sanitized_file = await sanitize_image(file)
+    
+    logs('info', f"File sanitization successful for: {file.filename}")
     return sanitized_file
