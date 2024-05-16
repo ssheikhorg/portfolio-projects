@@ -5,8 +5,8 @@ pydantic
 celery
 python-dotenv
 PyJWT
-aioredis
 passlib
-PyPDF2
 Pillow
 python-mimeparse
+pikepdf
+python-magic
