@@ -1,5 +1,13 @@
-.next
-node_modules
 .gitignore
-package-lock.json
 README.md
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+.idea/
+.vscode/
+*.egg-info
+.git
+.dockerignore
