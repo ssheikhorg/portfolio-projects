@@ -2,7 +2,13 @@
 FROM python:3.9-slim
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y libmagic1
+RUN apt-get update && apt-get install -y \
+    libmagic1 \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Set environment variables for Redis
 ENV REDIS_HOST=redis
@@ -19,10 +25,10 @@ COPY ./requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the src directory into the container at /app/src
-COPY ./src /app/src
+COPY ./backend /app/backend
 
 # Expose the port where the FastAPI app will run
 EXPOSE 8000
 
 # Command to run the FastAPI application using Uvicorn server
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
