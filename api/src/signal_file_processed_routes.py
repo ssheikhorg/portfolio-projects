@@ -1,24 +1,28 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import Optional
-from ..utils.authenticate_token import authorize_token
-from ..utils.process_files import check_file_claim_ids
 
-app = APIRouter()
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
-@app.put("/signalFileProcessed", dependencies=[Depends(authorize_token)])
+from .core.deps import authorize_token
+
+router = APIRouter()
+
+
+@router.put("/signalFileProcessed", dependencies=[Depends(authorize_token)])
 async def signal_file_processed(
     File_Id: Optional[str] = Query(None, description="File ID"),
     claim_id: Optional[str] = Query(None, description="Claim ID"),
-    payload: dict = Depends(authorize_token)
+    payload: dict = Depends(authorize_token),
 ):
-    """    
+    """
     Signals that a file has been processed and returns a success status and execution log.
 
     """
     # Check if the endpoint name matches any of the endpoints in the aud claim of the payload
-    if payload.get('aud'):
-        aud_endpoints = payload['aud'].split(',')
-        if any(endpoint.strip() == '/signalFileProcessed' for endpoint in aud_endpoints):
+    if payload.get("aud"):
+        aud_endpoints = payload["aud"].split(",")
+        if any(
+            endpoint.strip() == "/signalFileProcessed" for endpoint in aud_endpoints
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Access restricted for this endpoint",

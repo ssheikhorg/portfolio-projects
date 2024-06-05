@@ -1,0 +1,40 @@
+FROM python:3.9-slim-buster
+
+RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1
+
+
+# Download and install YARA
+RUN wget https://github.com/VirusTotal/yara/archive/refs/tags/v4.4.0.tar.gz -O yara-4.4.0.tar.gz && \
+    tar -zxf yara-4.4.0.tar.gz && \
+    cd yara-4.4.0 && \
+    ./bootstrap.sh && \
+    ./configure && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf yara-4.4.0 yara-4.4.0.tar.gz
+
+## add WORKDIR to enable reloads, uvcorn cannot reload if started from root 
+WORKDIR /app
+
+# Set environment variables for Redis
+ENV REDIS_HOST=redis
+ENV REDIS_PORT=6379
+ENV REDIS_DB=0
+
+COPY requirements.txt .
+
+RUN python -m pip install --upgrade pip \
+    && pip install -r requirements.txt \
+    && pip install --default-timeout=10000 uvicorn[standard] gunicorn
+
+COPY . .
+
+EXPOSE 8000
+
+ENV PYTHONUNBUFFERED=1
+
+# Run the start script, it will check for an /app/prestart.sh script
+# And then will start Gunicorn with Uvicorn
+CMD ["./dev_start.sh"]
+

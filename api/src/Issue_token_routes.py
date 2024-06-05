@@ -1,10 +1,12 @@
-from fastapi import HTTPException, Query, APIRouter,Depends
-from ..utils.issue_token import create_jwt_token
-from ..utils.authenticate_token import authenticate
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-app = APIRouter()
+from .core.deps import authenticate
+from .utils.issue_token import create_jwt_token
 
-@app.post("/issueToken",dependencies=[Depends(authenticate)])
+router = APIRouter()
+
+
+@router.post("/issueToken", dependencies=[Depends(authenticate)])
 async def issue_token(api_key: str = Query(...)):
     """
     Issues a JWT token from the given api key
