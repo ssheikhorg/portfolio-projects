@@ -1,13 +1,12 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, status
-
-from .core.deps import authorize_token
-from .core.schema import FileCategory
-from .services.process_files import get_next_document_id, store_or_update_document
-from .services.save_file import store_file_in_redis
-from .utils.log_function import logs
-from .utils.validate_sanitize_file_uploads import sanitize_file_content
+from schema.data_schema import FileCategory
+from services.process_files import get_next_document_id, store_or_update_document
+from services.save_file import store_file_in_redis
+from utils.authenticate_token import authorize_token
+from utils.log_function import logs
+from utils.validate_sanitize_file_uploads import sanitize_file_content
 
 router = APIRouter()
 

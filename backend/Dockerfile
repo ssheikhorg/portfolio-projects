@@ -1,6 +1,6 @@
 FROM python:3.9-slim-buster
 
-RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1
+RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1 cron git
 
 
 # Download and install YARA

@@ -4,7 +4,7 @@ import magic
 from fastapi import File, HTTPException, UploadFile, status
 from pikepdf import Pdf, PdfError
 from PIL import Image
-from src.utils.log_function import logs
+from utils.log_function import logs
 
 
 def get_mime_type(file: BytesIO):

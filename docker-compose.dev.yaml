@@ -3,14 +3,15 @@ version: "3"
 services:
   app:
     build:
-      context: ./api
+      context: ./backend
       dockerfile: Dockerfile
     command: "./dev_start.sh"
     ports:
       - "8000:8000"
     volumes:
-      - ./api:/app
+      - ./backend:/app
       - /ziv/shared/rule:/ziv/shared/rule
+      - /ziv/shared/packages:/ziv/shared/packages
     depends_on:
       - redis
 

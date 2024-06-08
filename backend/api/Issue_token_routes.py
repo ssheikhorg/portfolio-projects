@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-
-from .core.deps import authenticate
-from .utils.issue_token import create_jwt_token
+from utils.authenticate_token import authenticate
+from utils.issue_token import create_jwt_token
 
 router = APIRouter()
 

@@ -1,17 +1,17 @@
 import secure
+from config import settings
 from fastapi import APIRouter, Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .core import config
 from .process_file_routes import router as process_file_router
 from .retrieve_processed_file_routes import router as retrieve_file_router
 from .signal_file_processed_routes import router as signal_file_router
 
 app = FastAPI(
-    title=config.settings.project_name,
-    description=config.settings.project_description,
+    title=settings.project_name,
+    description=settings.project_description,
 )
 
 csp = secure.ContentSecurityPolicy().default_src("'self'").frame_ancestors("'none'")

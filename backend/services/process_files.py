@@ -1,9 +1,9 @@
 from typing import Optional
 
 import redis.asyncio as redis
+from config import settings
 from fastapi import HTTPException, Query, status
-from src.core.config import settings
-from src.utils.log_function import logs
+from utils.log_function import logs
 
 REDIS_HOST = settings.redis_host
 REDIS_PORT = settings.redis_port

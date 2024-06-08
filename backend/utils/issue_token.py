@@ -3,9 +3,8 @@ import os
 from datetime import datetime, timedelta
 
 import jwt
+from config import settings
 from fastapi import HTTPException
-
-from .coreconfig import settings
 
 # Retrieve environment variables
 JWT_SECRET_KEY = settings.secret_key

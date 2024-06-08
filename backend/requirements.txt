@@ -1,14 +1,14 @@
 fastapi>=0.85.0
-redis
-celery==5.4.0
+redis==5.0.5
+celery
 python-dotenv==0.21.0
 PyJWT==2.4.0
 aioredis==2.0.1
 passlib==1.7.4
 PyPDF2==3.0.1
-Pillow==10.3.0
+pillow==10.1.0
 python-mimeparse==1.6.0
-pikepdf==9.0.0
+pikepdf
 python-magic==0.4.3
 opencv-python<=4.6.0.66
 paddlepaddle==2.6.1
@@ -17,3 +17,5 @@ secure==0.3.0
 python-multipart==0.0.9
 yara-python==4.4.0
 pydantic_settings
+plyara
+gitpython
