@@ -12,8 +12,30 @@ services:
       - ./backend:/app
       - /ziv/shared/rule:/ziv/shared/rule
       - /ziv/shared/packages:/ziv/shared/packages
+      - ./backend/config_files/clamd.conf:/app
     depends_on:
       - redis
+      - clamav
+    networks:
+      - clamav_network
 
   redis:
     image: "redis:latest"
+
+  clamav:
+    build:
+      context: ./clamav
+      dockerfile: Dockerfile.clamav
+    ports:
+      - "3310:3310"
+    volumes:
+      - clam_db:/var/lib/clamav
+      - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
+    networks:
+      - clamav_network
+
+volumes:
+  clam_db:
+
+networks:
+  clamav_network: {}

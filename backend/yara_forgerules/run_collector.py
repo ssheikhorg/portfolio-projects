@@ -141,7 +141,6 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos):
                             )
                             # Append to list of YARA rule sets
                             yara_rule_sets.append(yara_rule_set)
-                            # pprint(yara_rule_set)
 
                         except Exception as e:
                             print(e)

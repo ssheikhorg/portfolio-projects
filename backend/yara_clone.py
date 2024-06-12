@@ -30,7 +30,7 @@ if __name__ == "__main__":
         "-c",
         "--config",
         help="specify a different config file",
-        default="/app/yara-forge-config.yml",
+        default="/app/config_files/yara-forge-config.yml",
     )
     args = parser.parse_args()
 
@@ -87,5 +87,3 @@ if __name__ == "__main__":
     else:
         logging.log(logging.ERROR, "Quality check failed")
         sys.exit(1)
-
-    logger.info("YARA Forge script completed")

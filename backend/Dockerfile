@@ -14,6 +14,11 @@ RUN wget https://github.com/VirusTotal/yara/archive/refs/tags/v4.4.0.tar.gz -O y
     cd .. && \
     rm -rf yara-4.4.0 yara-4.4.0.tar.gz
 
+# Install ClamAV client
+RUN apt-get update && \
+    apt-get install -y clamav && \
+    rm -rf /var/lib/apt/lists/*
+
 ## add WORKDIR to enable reloads, uvcorn cannot reload if started from root 
 WORKDIR /app
 

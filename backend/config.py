@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     )
     expiration_time_minutes: int = 60
     issuer: str = "OCRAPP"
+    clamav_config_file_path = "/app/clamd.conf"
 
     class Config:
         env_file = ".env"
