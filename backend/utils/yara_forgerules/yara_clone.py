@@ -14,7 +14,8 @@ import logging
 import sys
 
 import yaml
-from yara_forgerules import rule_output, run_collector, yara_compile
+
+from . import rule_output, run_collector, yara_compile
 
 
 def write_section_header(title, divider_with=72):

@@ -5,7 +5,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: "./dev_start.sh"
+    command: "/scripts/dev_start.sh"
     ports:
       - "8000:8000"
     volumes:
@@ -23,16 +23,16 @@ services:
     image: "redis:latest"
 
   clamav:
-    build:
-      context: ./clamav
-      dockerfile: Dockerfile.clamav
+    image: clamav/clamav:stable
     ports:
       - "3310:3310"
     volumes:
       - clam_db:/var/lib/clamav
       - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
+      - ./clamav/freshclam_update.sh:/usr/local/bin/freshclam_update.sh
     networks:
       - clamav_network
+    entrypoint: ["/bin/sh", "-c", "/clamav/entrypoint.sh"]
 
 volumes:
   clam_db:
