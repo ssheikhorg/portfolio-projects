@@ -1,32 +1,40 @@
-from pydantic import validator
-from pydantic_settings import BaseSettings
+from pydantic import BaseSettings, validator
+from typing import List, Dict
+import json
+from functools import lru_cache
 
-
-# Get config values from env variables, see https://fastapi.tiangolo.com/advanced/settings/
-# TODO: use lru_cache decorator
 class Settings(BaseSettings):
-    project_name: str = "illora"
-    project_description: str = "this is a an api for file processing"
-    redis_host: str = "172.30.80.1"
-    redis_port: int = 6379
-    redis_db: int = 0
-    secret_username: str = "webapp"
-    secret_password: str = "ocrapp"
-    bearer_token: str = "TOKEN"
-    secret_key: str = "jwt123"
-    algorithm: str = "HS256"
-    api_tokens: str = (
-        "[{'api_key': '6ba7b8109dad11d180b400c04fd430c8', 'subject': 'First TOKEN'},{'api_key': '3a2b4c6d8e0f1a2b3c4d5e6f7a8b9c0d', 'subject': 'Second TOKEN'}]"
-    )
-    expiration_time_minutes: int = 60
-    issuer: str = "OCRAPP"
-    clamav_config_file_path = "/app/clamd.conf"
+    project_name: str = "FileAPI Processor"
+    project_description: str = "Sanitization and Validation, Malware Scanning, OCR and NER Processing, File Optimization"
+    redis_host: str
+    redis_port: int
+    redis_db: int
+    secret_username: str
+    secret_password: str
+    bearer_token: str
+    secret_key: str
+    algorithm: str
+    api_tokens: List[Dict[str, str]]
+    expiration_time_minutes: int
+    issuer: str
+    clamav_config_file_path: str
+
+    @validator('api_tokens', pre=True)
+    def parse_api_tokens(cls, value):
+        if isinstance(value, str):
+            return json.loads(value.replace("'", '"'))
+        return value
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
 
+@lru_cache()
+def get_settings():
+    return Settings()
 
-settings = Settings()
+settings = get_settings()
 
+''' DEBUG Confirm if settings have been properly loaded
+'''
 # print(settings)
