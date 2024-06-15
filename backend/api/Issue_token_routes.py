@@ -37,7 +37,6 @@ async def issue_token(api_key: str = Query(...)):
         logger.error(f"HTTP exception occurred: {http_exception.detail}")
         raise http_exception
     except KeyError:
-        # Specific error if the API key is not found
         logger.error(f"API key not found: {api_key}")
         raise HTTPException(status_code=404, detail="API key not found")
     except Exception as e:
