@@ -23,12 +23,6 @@ class TokenResponse(BaseModel):
 async def issue_token(api_key: str = Query(...)):
 '''
     Issues a JWT token from the given API key.
-    
-    Args:
-        api_key (str): The API key to generate the JWT token.
-
-    Returns:
-        dict: A dictionary with the status and the JWT token.
 '''
     try:
         jwt_token = create_jwt_token(api_key)
