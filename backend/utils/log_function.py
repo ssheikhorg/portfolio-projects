@@ -1,22 +1,17 @@
 import logging
-import inspect
 
-# Initialize logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+def setup_logging(loglevel: str):
+    loglevel_mapping = {
+        "Debug": logging.DEBUG,
+        "Info": logging.INFO,
+        "Warning": logging.WARNING,
+        "Error": logging.ERROR,
+        "Critical": logging.CRITICAL,
+    }
+    logging.basicConfig(level=loglevel_mapping.get(loglevel, logging.INFO),
+                        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-def logs(level, message, detail=None):
-    """
-    Log a message with a specific level and detail.
-    """
-    # Get the name of the function that called the log function
-    function_name = inspect.currentframe().f_back.f_code.co_name
-
-    if level == 'info':
-        logging.info(f"{function_name}: {message}. Detail: {detail}")
-    elif level == 'warning':
-        logging.warning(f"{function_name}: {message}. Detail: {detail}")
-    elif level == 'critical':
-        logging.critical(f"{function_name}: {message}. Detail: {detail}")
-    else:
-        logging.debug(f"{function_name}: {message}. Detail: {detail}")
-
+def logs(level: str, message: str):
+    logger = logging.getLogger(__name__)
+    log_function = getattr(logger, level.lower(), logger.info)
+    log_function(message)
