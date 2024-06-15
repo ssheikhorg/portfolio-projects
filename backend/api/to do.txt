@@ -1,0 +1,3 @@
+uuid to create file id
+detail scope functions
+implement rate and concurrency limit in env - should not apply globally but per docker/replica (slowapi, asyncio.Semaphore)
