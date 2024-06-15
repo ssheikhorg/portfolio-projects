@@ -15,16 +15,13 @@ logging.basicConfig(level=logging.INFO,  # Set the logging level
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
-logger = logging.getLogger(__name__)
-
 class TokenResponse(BaseModel):
     status: str
     token: str
 
 @router.post("/issueToken", dependencies=[Depends(authenticate)], response_model=TokenResponse)
 async def issue_token(api_key: str = Query(...)):
-"""
+'''
     Issues a JWT token from the given API key.
     
     Args:
@@ -32,7 +29,7 @@ async def issue_token(api_key: str = Query(...)):
 
     Returns:
         dict: A dictionary with the status and the JWT token.
-"""
+'''
     try:
         jwt_token = create_jwt_token(api_key)
         return {"status": "success", "token": jwt_token}
