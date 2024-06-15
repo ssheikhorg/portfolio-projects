@@ -10,7 +10,6 @@ class Settings(BaseSettings):
     redis_host: str = "172.30.80.1"
     redis_port: int = 6379
     redis_db: int = 0
-    celery_broker_url: str = "redis://172.30.80.1:6379/1"
     secret_username: str = "webapp"
     secret_password: str = "ocrapp"
     bearer_token: str = "TOKEN"
