@@ -6,10 +6,10 @@ import logging
 
 ''' We should define a global logger
 '''
-logging.basicConfig(level=logging.INFO,  # Set the logging level
+logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',  # Format of the log messages
                     handlers=[
-                        logging.StreamHandler()  # Log to the console
+                        logging.StreamHandler() 
                     ])
 
 router = APIRouter()
