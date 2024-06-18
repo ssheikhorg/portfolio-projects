@@ -7,6 +7,26 @@ yara_repositories:
     author: "ReversingLabs"
     branch: "develop"
 
+# Rule Processing --------------------------------------------------------------
+rule_base_score: 75
+
+# Fixed order in the meta data values
+meta_data_order:
+  - description
+  - author
+  - id
+  - date
+  - modified
+  - old_rule_name
+  - reference
+  - source_url
+  - license_url
+  - hash
+  - logic_hash
+  - score
+  - quality
+  - tags
+
 rule_set_header: |
   /*
    * Rule Package Information

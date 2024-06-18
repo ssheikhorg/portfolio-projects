@@ -1,6 +1,6 @@
 # Core
-fastapi==0.103.1
-redis==5.0.9
+fastapi>=0.85.0
+redis==5.0.5
 python-dotenv==1.0.0
 
 # Security and Authentication
@@ -12,28 +12,28 @@ aioredis==2.0.1
 
 # File Processing
 PyPDF2==3.0.1
-pillow==10.1.0
+pillow==10.3.0
 python-mimeparse==1.6.0
-pikepdf==7.2.0
+pikepdf==9.0.0
 python-magic==0.4.3
 
 # Machine Learning and OCR
-opencv-python==4.8.0.74
-paddlepaddle==2.6.3
+opencv-python==4.6.0.66
+paddlepaddle==2.6.1
 paddleocr==2.7.3
 
 # Web and HTTP
-python-multipart==0.0.6
+python-multipart==0.0.9
 
 # Security
-secure==0.4.0
+secure==0.3.0
 
 # YARA (malware identification)
-yara-python==4.3.0
+yara-python==4.4.0
 
-# Configuration
-pydantic==2.0.3
+# configuration
+pydantic_settings
 
 # Development Tools
-plyara==2.5.1
+plyara==2.1.1
 gitpython==3.1.31

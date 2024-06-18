@@ -2,6 +2,7 @@ import os
 import shlex
 import subprocess
 import tempfile
+import uuid
 
 
 def create_tmp_file(bytes, filename) -> str:
@@ -34,3 +35,7 @@ class Command(object):
             returncode = e.returncode
         output = output.decode("utf-8")
         return returncode, output
+
+
+def generate_file_id():
+    return str(uuid.uuid4())

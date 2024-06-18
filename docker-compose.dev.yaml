@@ -4,15 +4,14 @@ services:
   app:
     build:
       context: ./backend
-      dockerfile: Dockerfile
-    command: "/scripts/dev_start.sh"
+      dockerfile: dockerfile
+    command: "./scripts/dev_start.sh"
     ports:
       - "8000:8000"
     volumes:
       - ./backend:/app
       - /ziv/shared/rule:/ziv/shared/rule
       - /ziv/shared/packages:/ziv/shared/packages
-      - ./backend/config_files/clamd.conf:/app
     depends_on:
       - redis
       - clamav
@@ -23,16 +22,13 @@ services:
     image: "redis:latest"
 
   clamav:
-    image: clamav/clamav:stable
+    image: "clamav/clamav:stable"
     ports:
       - "3310:3310"
     volumes:
       - clam_db:/var/lib/clamav
-      - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
-      - ./clamav/freshclam_update.sh:/usr/local/bin/freshclam_update.sh
     networks:
       - clamav_network
-    entrypoint: ["/bin/sh", "-c", "/clamav/entrypoint.sh"]
 
 volumes:
   clam_db:

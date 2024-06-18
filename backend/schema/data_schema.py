@@ -26,3 +26,8 @@ class ServiceInfo(BaseModel):
 
 
 service_info_response = {}
+
+
+class ProcessFileResponse(BaseModel):
+    status_code: int
+    file_id: str

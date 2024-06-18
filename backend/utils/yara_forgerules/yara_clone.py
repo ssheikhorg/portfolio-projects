@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: iso-8859-1 -*-
 # -*- coding: utf-8 -*-
-#
-# YARA Forge
-# A YARA Rule Concentrator
-# Florian Roth
-# March 2024
 
 __version__ = "0.8.1"
 
@@ -15,7 +10,7 @@ import sys
 
 import yaml
 
-from . import rule_output, run_collector, yara_compile
+from . import rule_output, run_collector, yara_compile, yara_process
 
 
 def write_section_header(title, divider_with=72):
@@ -73,7 +68,7 @@ if __name__ == "__main__":
 
     # Write the YARA packages
     write_section_header("Writing YARA packages")
-    repo_files = rule_output.write_yara_packages(
+    repo_file = rule_output.write_yara_packages(
         yara_rule_repo_sets,
         yara_compile.get_yara_qa_commit_hash(),
         YARA_FORGE_CONFIG=YARA_FORGE_CONFIG,
@@ -81,7 +76,7 @@ if __name__ == "__main__":
 
     # We quality check the output files and look for errors
     # write_section_header("Quality checking YARA packages")
-    test_successful = yara_compile.check_yara_packages(repo_files)
+    test_successful = yara_compile.check_yara_packages(repo_file)
     if test_successful:
         logging.log(logging.INFO, "Quality check finished successfully")
         sys.exit(0)

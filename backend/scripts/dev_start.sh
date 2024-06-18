@@ -2,7 +2,7 @@
 
 # Setup and start cron
 setup_cron() {
-  chmod +x /app/cron_script.sh
+  chmod +x /app/scripts/cron_script.sh
   echo "0 0 * * * /app/cron_script.sh >> /var/log/cron.log 2>&1" > /etc/cron.d/mycron
   chmod 0644 /etc/cron.d/mycron
   crontab /etc/cron.d/mycron

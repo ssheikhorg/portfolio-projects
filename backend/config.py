@@ -1,11 +1,16 @@
-from pydantic import BaseSettings, validator
-from typing import List, Dict
 import json
 from functools import lru_cache
+from typing import Dict, List
+
+from pydantic import validator
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
     project_name: str = "FileAPI Processor"
-    project_description: str = "Sanitization and Validation, Malware Scanning, OCR and NER Processing, File Optimization"
+    project_description: str = (
+        "Sanitization and Validation, Malware Scanning, OCR and NER Processing, File Optimization"
+    )
     redis_host: str
     redis_port: int
     redis_db: int
@@ -18,8 +23,10 @@ class Settings(BaseSettings):
     expiration_time_minutes: int
     issuer: str
     clamav_config_file_path: str
+    max_file_size: int
+    yara_rule_packages: str = "/ziv/shared/packages"
 
-    @validator('api_tokens', pre=True)
+    @validator("api_tokens", pre=True)
     def parse_api_tokens(cls, value):
         if isinstance(value, str):
             return json.loads(value.replace("'", '"'))
@@ -29,12 +36,14 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
 
+
 @lru_cache()
 def get_settings():
     return Settings()
 
+
 settings = get_settings()
 
-''' DEBUG Confirm if settings have been properly loaded
-'''
+""" DEBUG Confirm if settings have been properly loaded
+"""
 # print(settings)

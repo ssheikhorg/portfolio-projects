@@ -10,10 +10,7 @@ from fastapi.security import (
     HTTPBearer,
 )
 from passlib.context import CryptContext  # Import bcrypt for password hashing
-
-import yara
-
-from .log_function import logs
+from utils.log_function import logs
 
 SECRET_USER = settings.secret_username
 SECRET_PASS = settings.secret_password
@@ -121,9 +118,3 @@ def get_password_hash(password):
     except Exception as e:
         logs("critical", "0")
         raise
-
-
-# Dependency function
-def yara_match(file: UploadFile = File(...)):
-    # Load YARA rules and apply to files
-    pass
