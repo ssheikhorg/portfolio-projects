@@ -4,6 +4,15 @@ import subprocess
 import tempfile
 import uuid
 
+from config import settings
+
+
+def save_file(file_bytes, file_name):
+    file_path = os.path.join(settings.clamav_scanned_dir, file_name)
+    with open(file_path, "wb") as f:
+        f.write(file_bytes)
+    return file_path
+
 
 def create_tmp_file(bytes, filename) -> str:
     dir = tempfile.mkdtemp()
@@ -30,11 +39,19 @@ class Command(object):
             )
             returncode = _output.returncode
             output = _output.stdout
+            error = _output.stderr
         except subprocess.CalledProcessError as e:
             output = e.stderr
             returncode = e.returncode
-        output = output.decode("utf-8")
+        output = self.decode_output(output)
+        print("==============>", error, output)
         return returncode, output
+
+    def decode_output(self, output):
+        try:
+            return output.decode("utf-8")
+        except UnicodeDecodeError:
+            return output.decode("latin-1")
 
 
 def generate_file_id():

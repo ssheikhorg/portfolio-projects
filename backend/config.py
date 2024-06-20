@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     expiration_time_minutes: int
     issuer: str
     clamav_config_file_path: str
+    clamav_scanned_dir: str
     max_file_size: int
     yara_rule_packages: str = "/ziv/shared/packages"
 

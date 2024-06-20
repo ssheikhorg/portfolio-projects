@@ -53,3 +53,6 @@ file_service_router = APIRouter(prefix="/file_service")
 file_service_router.include_router(process_file_router)
 file_service_router.include_router(signal_file_router)
 file_service_router.include_router(retrieve_file_router)
+
+
+app.include_router(file_service_router)

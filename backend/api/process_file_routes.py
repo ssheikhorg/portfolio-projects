@@ -17,26 +17,26 @@ router = APIRouter()
 
 @router.put(
     "/processFile",
-    dependencies=[Depends(authorize_token)],
+    # dependencies=[Depends(authorize_token)],
     response_model=ProcessFileResponse,
 )
 async def process_file_public(
-    scope_filesize_check: bool = Query(..., description="Filesize check (true/false)"),
+    # scope_filesize_check: bool = Query(..., description="Filesize check (true/false)"),
     scope_malware_scan: bool = Query(..., description="Malware scan (true/false)"),
-    scope_validation_sanitization: bool = Query(
-        ..., description="Validation & Sanitization (true/false)"
-    ),
-    scope_image_preprocessing: bool = Query(
-        ..., description="Image preprocessing (true/false)"
-    ),
-    scope_optical_character_recognition: bool = Query(
-        ..., description="Optical character recognition (true/false)"
-    ),
-    scope_named_entity_recognition: bool = Query(
-        ..., description="Named entity recognition (true/false)"
-    ),
-    scope_optimization: bool = Query(..., description="File optimization (true/false)"),
-    scope_renaming: bool = Query(..., description="File renaming (true/false)"),
+    # scope_validation_sanitization: bool = Query(
+    #     ..., description="Validation & Sanitization (true/false)"
+    # ),
+    # scope_image_preprocessing: bool = Query(
+    #     ..., description="Image preprocessing (true/false)"
+    # ),
+    # scope_optical_character_recognition: bool = Query(
+    #     ..., description="Optical character recognition (true/false)"
+    # ),
+    # scope_named_entity_recognition: bool = Query(
+    #     ..., description="Named entity recognition (true/false)"
+    # ),
+    # scope_optimization: bool = Query(..., description="File optimization (true/false)"),
+    # scope_renaming: bool = Query(..., description="File renaming (true/false)"),
     file_category: FileCategory = Query(..., description="Select file category"),
     file: UploadFile = File(..., description="load file for operation"),
     loglevel: str = Query(
@@ -68,31 +68,31 @@ async def process_file_public(
         max_file_size = settings.max_file_size
 
         if scope_malware_scan:
-            clamav_task = clamav_scan(file)
-            yara_task = yara_scan(file)
+            clamav_task = await clamav_scan(file)
+            # yara_task = yara_scan(file)
 
             # Wait for both tasks to complete
-            clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
+            # clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
 
         """ Store or update document in database
         """
-        await store_or_update_document(
-            file_id=file_id,
-            file_category=file_category,
-            log="wait for Processing",
-            ocr_result="No OCR result yet",
-            ocr_file_path="Path to file",
-        )
-        logs("info", f"Document {file_id} updated with file category: {file_category}")
+        # await store_or_update_document(
+        #     file_id=file_id,
+        #     file_category=file_category,
+        #     log="wait for Processing",
+        #     ocr_result="No OCR result yet",
+        #     ocr_file_path="Path to file",
+        # )
+        # logs("info", f"Document {file_id} updated with file category: {file_category}")
 
-        sanitized_file = await sanitize_file_content(file)
-        logs("info", f"File {sanitized_file.filename} sanitized")
+        # sanitized_file = await sanitize_file_content(file)
+        # logs("info", f"File {sanitized_file.filename} sanitized")
 
-        await store_file_in_redis(sanitized_file, file_id)
-        logs(
-            "info",
-            f"Sanitized file {sanitized_file.filename} stored in Redis with document ID: {file_id}",
-        )
+        # await store_file_in_redis(sanitized_file, file_id)
+        # logs(
+        #     "info",
+        #     f"Sanitized file {sanitized_file.filename} stored in Redis with document ID: {file_id}",
+        # )
 
         response_body = ProcessFileResponse(
             status_code=status.HTTP_200_OK,

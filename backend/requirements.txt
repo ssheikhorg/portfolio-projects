@@ -37,3 +37,4 @@ pydantic_settings
 # Development Tools
 plyara==2.1.1
 gitpython==3.1.31
+clamd==1.0.2

@@ -10,8 +10,11 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app
+      - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
       - /ziv/shared/rule:/ziv/shared/rule
       - /ziv/shared/packages:/ziv/shared/packages
+      - /ziv/shared/scandir:/scandir
+      - /var/lib/docker/data/clamav/sockets/:/run/clamav
     depends_on:
       - redis
       - clamav
@@ -23,12 +26,14 @@ services:
 
   clamav:
     image: "clamav/clamav:stable"
-    ports:
-      - "3310:3310"
     volumes:
       - clam_db:/var/lib/clamav
+      - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
+      - /var/lib/docker/data/clamav/sockets/:/run/clamav
+      - /ziv/shared/scandir:/scandir
     networks:
       - clamav_network
+    command: bash -c "chown -R clamav:clamav /run/clamav && clamd"
 
 volumes:
   clam_db:
