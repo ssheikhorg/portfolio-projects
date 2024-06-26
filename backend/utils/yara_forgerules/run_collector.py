@@ -159,7 +159,6 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos):
             "repo": repo["repo"],
             "branch": repo["branch"],
             "rules_sets": yara_rule_sets,
-            "quality": repo["quality"],
             "license": repo["license"],
             "license_url": repo["license_url"],
             "commit_hash": repo["commit_hash"],

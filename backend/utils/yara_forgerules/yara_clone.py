@@ -6,11 +6,13 @@ __version__ = "0.8.1"
 
 import argparse
 import logging
+import os
 import sys
 
 import yaml
 
-from . import rule_output, run_collector, yara_compile, yara_process
+sys.path.append("/app")
+from utils.yara_forgerules import rule_output, run_collector, yara_compile
 
 
 def write_section_header(title, divider_with=72):
@@ -68,15 +70,22 @@ if __name__ == "__main__":
 
     # Write the YARA packages
     write_section_header("Writing YARA packages")
-    repo_file = rule_output.write_yara_packages(
+    repo_file = rule_output.write_yara_rules_to_single_file(
         yara_rule_repo_sets,
-        yara_compile.get_yara_qa_commit_hash(),
-        YARA_FORGE_CONFIG=YARA_FORGE_CONFIG,
+        output_dir=YARA_FORGE_CONFIG["fetched_rule_dir"],
+        output_file="yara_rules.yar",
     )
 
     # We quality check the output files and look for errors
     # write_section_header("Quality checking YARA packages")
-    test_successful = yara_compile.check_yara_packages(repo_file)
+    test_successful = yara_compile.check_yara_packages(
+        {
+            "file_path": os.path.join(
+                YARA_FORGE_CONFIG["fetched_rule_dir"], "yara_rules.yar"
+            ),
+            "name": "",
+        }
+    )
     if test_successful:
         logging.log(logging.INFO, "Quality check finished successfully")
         sys.exit(0)

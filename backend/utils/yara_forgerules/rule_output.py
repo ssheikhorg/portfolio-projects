@@ -1,96 +1,52 @@
-"""
-This module contains functions for writing YARA rules into separate files.
-"""
-
-import datetime
 import logging
 import os
+import traceback
 
+import yara
 from plyara.utils import rebuild_yara_rule
 
 
-def write_yara_packages(processed_yara_repos, yaraqa_commit, YARA_FORGE_CONFIG):
-    """
-    Writes YARA rules into separate files.
-    """
+def write_yara_rules_to_single_file(
+    yara_rule_repo_sets,
+    output_dir="/ziv/shared/packages",
+    output_file="yara_rules.yara",
+):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
-    # List of files that were written
-    package_files = []
+    output_path = os.path.join(output_dir, output_file)
 
-    # Create the directory for the rule package
-    package_dir = os.path.join("/ziv/shared/packages", "combined")
-    if not os.path.exists(package_dir):
-        os.makedirs(package_dir)
-    # Create the rule file name
-    rule_file_name = "yara-rules-combined.yar"
-    # Create the rule file path
-    rule_file_path = os.path.join(package_dir, rule_file_name)
+    yara_rule_file_content = ""
 
-    # Write information about the rule package, the output file name
-    # and the output file path to the console
-    logging.info(
-        "------------------------------------------------------------------------"
-    )
-    logging.info("Creating YARA rule package '%s': %s", "combined", rule_file_path)
-    logging.info("Description: %s", "Default YARA Rule Package")
-    # List of strings composed of the rules from each repository
-    output_rule_set_strings = []
+    dummy = ""  # Placeholder for external variables
 
-    # Loop over the repositories
-    for repo in processed_yara_repos:
-        # Debug output
-        logging.info("Writing YARA rules from repository: %s", repo["name"])
+    for repo in yara_rule_repo_sets:
+        for rule_set in repo["rules_sets"]:
+            for rule in rule_set["rules"]:
+                yara_rule_str = rebuild_yara_rule(rule)
+                # Try to compile the YARA rule
+                try:
+                    compiled_rules = yara.compile(
+                        source=yara_rule_str,
+                        externals={
+                            "filename": dummy,
+                            "filepath": dummy,
+                            "extension": dummy,
+                            "filetype": dummy,
+                            "md5": dummy,
+                        },
+                    )
+                    logging.info(
+                        "Successfully compiled YARA rule from file: %s"
+                        % rule_set["file_path"]
+                    )
+                    yara_rule_file_content += yara_rule_str + "\n"
+                except Exception as e:
+                    logging.error("Error in YARA rule: %s" % rule_set["file_path"])
+                    traceback.print_exc()
 
-        # Repo rule set string
-        repo_rules_strings = []
-        # Loop over the rule sets in the repository and modify the rules
-        for rule_sets in repo["rules_sets"]:
-            # Debug output
-            logging.debug(
-                "Writing YARA rules from rule set: %s", rule_sets["file_path"]
-            )
-            # List of required private rules
-            required_private_rules = []
-            # Loop over the rules in the rule set
-            for rule in rule_sets["rules"]:
+    # Write the successfully compiled YARA rules to the output file
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(yara_rule_file_content)
 
-                # Debug output
-                # pprint(rule)
-
-                # Skip private rules
-                if "scopes" in rule and "private" in rule["scopes"]:
-                    continue
-
-                # Write the rule into the output file
-                repo_rules_strings.append(rebuild_yara_rule(rule))
-
-        # Only write the rule set if there's at least one rule in the set
-        if len(repo_rules_strings) > 0:
-            # Prepend header to the output string
-            repo_rule_set_header = YARA_FORGE_CONFIG["repo_header"].format(
-                repo_name=repo["name"],
-                repo_url=repo["url"],
-                retrieval_date=datetime.datetime.now().strftime("%Y-%m-%d"),
-                repo_commit=yaraqa_commit,
-                total_rules=len(repo_rules_strings),
-                repo_license=repo["license"],
-            )
-            # Append the rule set string to the list of rule set strings
-            output_rule_set_strings.append(repo_rule_set_header)
-            output_rule_set_strings.extend(repo_rules_strings)
-
-    # Only write the rule file if there's at least one rule in all sets in the package
-    if output_rule_set_strings:
-        with open(rule_file_path, "w", encoding="utf-8") as f:
-            # Write the output rule set strings to the file
-            f.write("".join(output_rule_set_strings))
-
-            # Add the name of the repo and the file path to the output file to the list
-            package_files.append(
-                {
-                    "name": "combined",
-                    "file_path": rule_file_path,
-                }
-            )
-
-    return package_files
+    logging.info(f"YARA rules written to {output_path}")

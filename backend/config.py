@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     clamav_config_file_path: str
     clamav_scanned_dir: str
     max_file_size: int
-    yara_rule_packages: str = "/ziv/shared/packages"
+    yara_rule_packages: str = "/ziv/shared/packages/yara_rules.yar"
 
     @validator("api_tokens", pre=True)
     def parse_api_tokens(cls, value):

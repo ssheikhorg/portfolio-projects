@@ -1,59 +1,10 @@
 # Collection -------------------------------------------------------------------
 repo_staging_dir: "/ziv/shared/rule"
 
+fetched_rule_dir: "/ziv/shared/packages"
+
 yara_repositories:
-  - name: "ReversingLabs"
-    url: "https://github.com/reversinglabs/reversinglabs-yara-rules/"
-    author: "ReversingLabs"
-    branch: "develop"
-
-# Rule Processing --------------------------------------------------------------
-rule_base_score: 75
-
-# Fixed order in the meta data values
-meta_data_order:
-  - description
-  - author
-  - id
-  - date
-  - modified
-  - old_rule_name
-  - reference
-  - source_url
-  - license_url
-  - hash
-  - logic_hash
-  - score
-  - quality
-  - tags
-
-rule_set_header: |
-  /*
-   * Rule Package Information
-   * Name: {rule_package_name} 
-   * Description: {rule_package_description}
-   * YARA-Forge Version: {program_version}
-   * YARA-QA Commit: {yaraqa_commit}
-   * Minimum Quality: {rule_package_minimum_quality}
-   * Force Include Importance Level: {rule_package_force_include_importance_level}
-   * Force Exclude Importance Level: {rule_package_force_exclude_importance_level}
-   * Minimum Age (in days): {rule_package_minimum_age}
-   * Minimum Score: {rule_package_minimum_score}
-   * Creation Date: {retrieval_date}
-   * Number of Rules: {total_rules}
-   * Skipped: {total_rules_skipped_age} (age), {total_rules_skipped_quality} (quality), {total_rules_skipped_score} (score), {total_rules_skipped_importance} (importance)
-   */
-
-repo_header: |
-  /*
-   * YARA Rule Set
-   * Repository Name: {repo_name}
-   * Repository: {repo_url}
-   * Retrieval Date: {retrieval_date}
-   * Git Commit: {repo_commit}
-   * Number of Rules: {total_rules}
-   * 
-   * LICENSE
-   * 
-   * {repo_license}
-   */
+  - name: "Project"
+    url: "https://github.com/Yara-Rules/rules"
+    author: "yara"
+    branch: "master"
