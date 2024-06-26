@@ -3,8 +3,17 @@ from typing import Optional
 
 from config import settings
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
-from schema.data_schema import FileCategory, ProcessFileResponse
-from services.perform_ocr import process_OCR
+from schema.data_schema import (
+    ClamavScanResult,
+    FileCategory,
+    MalwareScanResult,
+    ProcessFileResponse,
+    StringMatch,
+    YaraMatchDetails,
+    YaraScanResult,
+)
+
+# from services.perform_ocr import process_OCR
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_functions import check_filesize
 from services.validate_sanitize_file_uploads import sanitize_file_content
@@ -63,21 +72,58 @@ async def process_file_public(
     try:
         file_bytes = await file.read()
         file_extension = file.filename.split(".")[-1].lower()
+        response_data = ProcessFileResponse()
         if scope_filesize_check:
-            check_filesize(file_bytes, settings.max_file_size)
-            logs("info", f"File size check passed")
+            try:
+                check_filesize(file_bytes, settings.max_file_size)
+                response_data.filesize_check = "OK"
+                logs("info", "File size check passed")
+            except HTTPException:
+                response_data.filesize_check = "file size too big"
         if scope_malware_scan:
-            clamav_task = clamav_scan(file_bytes, file_extension)
-            yara_task = yara_scan(file_bytes, file_extension)
+            clamav_task = asyncio.to_thread(clamav_scan, file_bytes, file_extension)
+            yara_task = asyncio.to_thread(yara_scan, file_bytes, file_extension)
 
             # Wait for both tasks to complete
             clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
-        if scope_optical_character_recognition:
-            OCR_result = await process_OCR(file_bytes)
-            processed_file_bytes = OCR_result.getvalue()
-        if scope_validation_sanitization:
-            await sanitize_file_content(file)
+            clamav_status, clamav_details, clamav_error = clamav_result
+            if clamav_status == 0:
+                clamav_response = ClamavScanResult(status="OK")
+            else:
+                clamav_response = ClamavScanResult(status="FAIL", details=clamav_error)
 
+            if yara_result == "OK":
+                yara_response = YaraScanResult(status="OK", details="No matches found")
+            else:
+                yara_response = YaraScanResult(
+                    status="FAIL",
+                    details=[
+                        YaraMatchDetails(
+                            rule=match.rule,
+                            namespace=match.namespace,
+                            tags=match.tags,
+                            meta=match.meta,
+                            strings=[
+                                StringMatch(
+                                    identifier=string_match.identifier,
+                                    # is_xor=string_match.is_xor,
+                                )
+                                for string_match in match.strings
+                            ],
+                        )
+                        for match in yara_result
+                    ],
+                )
+
+            response_data.malware_scan = MalwareScanResult(
+                clamav=clamav_response, yara=yara_response
+            )
+        # if scope_validation_sanitization:
+        #     await sanitize_file_content(file)
+        # if scope_optical_character_recognition:
+        #     OCR_result = await process_OCR(file_bytes)
+        #     processed_file_bytes = OCR_result.getvalue()
+        return response_data
     except HTTPException as http_exception:
         logs(
             "error",

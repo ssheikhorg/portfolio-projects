@@ -2,7 +2,7 @@ from fastapi import HTTPException
 from utils.log_function import logs
 
 
-async def check_filesize(file_bytes: bytes, max_file_size: int):
+def check_filesize(file_bytes: bytes, max_file_size: int):
     if len(file_bytes) > max_file_size:
         logs("error", f"File size exceeds the maximum limit")
         raise HTTPException(

@@ -116,31 +116,6 @@ async def sanitize_image(file: UploadFile):
         )
 
 
-async def sanitize_image(file: UploadFile):
-    """
-    Sanitizes image files by resaving them to strip out potential embedded harmful content and metadata.
-    """
-    try:
-        with Image.open(file.file) as image:
-            output_image = BytesIO()
-            format_to_use = (
-                "JPEG" if image.format in ["JPEG", "JFIF", "PJPEG"] else image.format
-            )
-            image.save(output_image, format=format_to_use)
-            output_image.seek(0)
-            logs(
-                "info",
-                "Image sanitization successful: metadata and potential threats removed.",
-            )
-        return UploadFile(filename=file.filename, file=output_image)
-    except IOError as e:
-        logs("critical", f"Image sanitization failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Image sanitization error: {str(e)}",
-        )
-
-
 async def sanitize_file_content(file: UploadFile = File(...)):
     """
     Determines file type, performs malware scan, and executes the appropriate sanitization function.

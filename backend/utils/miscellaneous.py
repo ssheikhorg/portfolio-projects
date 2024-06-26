@@ -44,8 +44,8 @@ class Command(object):
             output = e.stderr
             returncode = e.returncode
         output = self.decode_output(output)
-        print("==============>", error, output)
-        return returncode, output
+        error = self.decode_output(error)
+        return returncode, output, error
 
     def decode_output(self, output):
         try:
