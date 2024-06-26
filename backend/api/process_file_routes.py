@@ -2,30 +2,22 @@ import asyncio
 from typing import Optional
 
 from config import settings
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 from schema.data_schema import (
     ClamavScanResult,
     FileCategory,
     MalwareScanResult,
     ProcessFileResponse,
-    StringMatch,
-    YaraMatchDetails,
     YaraScanResult,
 )
-
-# from services.perform_ocr import process_OCR
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_functions import check_filesize
-from services.validate_sanitize_file_uploads import sanitize_file_content
 from utils.log_function import logs, setup_logging
 
 router = APIRouter()
 
 
-@router.put(
-    "/processFile",
-    response_model=ProcessFileResponse,
-)
+@router.put("/processFile", response_model=ProcessFileResponse)
 async def process_file_public(
     scope_filesize_check: bool = Query(..., description="Filesize check (true/false)"),
     scope_malware_scan: bool = Query(..., description="Malware scan (true/false)"),
@@ -44,7 +36,7 @@ async def process_file_public(
     scope_optimization: bool = Query(..., description="File optimization (true/false)"),
     scope_renaming: bool = Query(..., description="File renaming (true/false)"),
     file_category: FileCategory = Query(..., description="Select file category"),
-    file: UploadFile = File(..., description="load file for operation"),
+    file: UploadFile = File(..., description="Load file for operation"),
     loglevel: str = Query(
         ..., description="Loglevel (Debug, Info, Warning, Error, Critical)"
     ),
@@ -67,19 +59,23 @@ async def process_file_public(
     Returns:
         ProcessFileResponse: Contains status code and file id
     """
-    setup_logging(loglevel)
+    setup_logging(loglevel)  # Set up logging based on the specified log level
 
     try:
         file_bytes = await file.read()
         file_extension = file.filename.split(".")[-1].lower()
         response_data = ProcessFileResponse()
+
+        # Perform filesize check if enabled
         if scope_filesize_check:
             try:
                 check_filesize(file_bytes, settings.max_file_size)
-                response_data.filesize_check = "OK"
+                response_data.filesize_check = "PASSED"
                 logs("info", "File size check passed")
             except HTTPException:
-                response_data.filesize_check = "file size too big"
+                response_data.filesize_check = "FAILED"
+
+        # Perform malware scan if enabled
         if scope_malware_scan:
             clamav_task = asyncio.to_thread(clamav_scan, file_bytes, file_extension)
             yara_task = asyncio.to_thread(yara_scan, file_bytes, file_extension)
@@ -87,43 +83,43 @@ async def process_file_public(
             # Wait for both tasks to complete
             clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
             clamav_status, clamav_details, clamav_error = clamav_result
-            if clamav_status == 0:
-                clamav_response = ClamavScanResult(status="OK")
-            else:
-                clamav_response = ClamavScanResult(status="FAIL", details=clamav_error)
 
-            if yara_result == "OK":
-                yara_response = YaraScanResult(status="OK", details="No matches found")
+            # Handle ClamAV scan results
+            if clamav_status == 0:
+                clamav_response = ClamavScanResult(status="PASSED")
+            elif clamav_status == 1:
+                if loglevel == "Debug":
+                    clamav_response = ClamavScanResult(
+                        status="FAILED", logs=clamav_details
+                    )
+                else:
+                    clamav_response = ClamavScanResult(status="FAILED")
             else:
-                yara_response = YaraScanResult(
-                    status="FAIL",
-                    details=[
-                        YaraMatchDetails(
-                            rule=match.rule,
-                            namespace=match.namespace,
-                            tags=match.tags,
-                            meta=match.meta,
-                            strings=[
-                                StringMatch(
-                                    identifier=string_match.identifier,
-                                    # is_xor=string_match.is_xor,
-                                )
-                                for string_match in match.strings
-                            ],
-                        )
-                        for match in yara_result
-                    ],
+                clamav_response = ClamavScanResult(
+                    status="FAILED", details=clamav_error
                 )
 
+            # Handle YARA scan results
+            if yara_result == "OK":
+                yara_response = YaraScanResult(status="PASSED")
+            else:
+                if loglevel == "Debug":
+                    if yara_result == False:
+                        yara_logs = "YARA failed to scan file"
+                    else:
+                        yara_logs = f"Suspicious {', '.join([match.rule for match in yara_result])} found in file"
+                else:
+                    yara_logs = None
+
+                yara_response = YaraScanResult(status="FAILED", logs=yara_logs)
+
+            # Set malware scan results in response data
             response_data.malware_scan = MalwareScanResult(
                 clamav=clamav_response, yara=yara_response
             )
-        # if scope_validation_sanitization:
-        #     await sanitize_file_content(file)
-        # if scope_optical_character_recognition:
-        #     OCR_result = await process_OCR(file_bytes)
-        #     processed_file_bytes = OCR_result.getvalue()
+
         return response_data
+
     except HTTPException as http_exception:
         logs(
             "error",

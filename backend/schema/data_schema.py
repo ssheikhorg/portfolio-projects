@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, List, Optional, Union
+from typing import List, Optional, Union
 
 from pydantic import BaseModel
 
@@ -19,12 +19,12 @@ class YaraMatchDetails(BaseModel):
 
 class YaraScanResult(BaseModel):
     status: str
-    details: Union[str, List[YaraMatchDetails]]
+    logs: Optional[Union[str, List[str]]] = None
 
 
 class ClamavScanResult(BaseModel):
     status: str
-    details: Optional[str] = None
+    logs: Optional[str] = None
 
 
 class MalwareScanResult(BaseModel):

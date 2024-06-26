@@ -6,8 +6,6 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .process_file_routes import router as process_file_router
-from .retrieve_processed_file_routes import router as retrieve_file_router
-from .signal_file_processed_routes import router as signal_file_router
 
 app = FastAPI(
     title=settings.project_name,
@@ -51,8 +49,6 @@ def main():
 
 file_service_router = APIRouter(prefix="/file_service")
 file_service_router.include_router(process_file_router)
-file_service_router.include_router(signal_file_router)
-file_service_router.include_router(retrieve_file_router)
 
 
 app.include_router(file_service_router)
