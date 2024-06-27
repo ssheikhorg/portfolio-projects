@@ -1,8 +1,17 @@
 import asyncio
-from typing import Optional
+from typing import Optional, Union
 
 from config import settings
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter,
+    File,
+    FileResponse,
+    HTTPException,
+    Query,
+    StreamingResponse,
+    UploadFile,
+    status,
+)
 from schema.data_schema import (
     ClamavScanResult,
     FileCategory,
@@ -10,14 +19,20 @@ from schema.data_schema import (
     ProcessFileResponse,
     YaraScanResult,
 )
+from services.perform_ocr import process_OCR
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_functions import check_filesize
+from services.validate_sanitize_file_uploads import sanitize_file_content
 from utils.log_function import logs, setup_logging
+from utils.miscellaneous import create_tmp_file
 
 router = APIRouter()
 
 
-@router.put("/processFile", response_model=ProcessFileResponse)
+@router.put(
+    "/processFile",
+    response_model=Union[ProcessFileResponse, FileResponse, StreamingResponse],
+)
 async def process_file_public(
     scope_filesize_check: bool = Query(..., description="Filesize check (true/false)"),
     scope_malware_scan: bool = Query(..., description="Malware scan (true/false)"),
@@ -40,6 +55,7 @@ async def process_file_public(
     loglevel: str = Query(
         ..., description="Loglevel (Debug, Info, Warning, Error, Critical)"
     ),
+    return_file: bool = Query(..., description="Return processed file (true/false)"),
 ):
     """Processes an uploaded file and returns a response based on parameters
 
@@ -117,6 +133,54 @@ async def process_file_public(
             response_data.malware_scan = MalwareScanResult(
                 clamav=clamav_response, yara=yara_response
             )
+
+        # Perform sanitization and validation if enabled
+        if scope_validation_sanitization:
+            other_scope_values = True
+            if scope_filesize_check or scope_malware_scan:
+                if scope_filesize_check:
+                    if response_data.filesize_check != "PASSED":
+                        other_scope_values = False
+                if scope_malware_scan:
+                    if (
+                        response_data.malware_scan["clamav"]["status"] != "PASSED"
+                        or response_data.malware_scan["yara"]["status"] != "PASSED"
+                    ):
+                        other_scope_values = False
+            if other_scope_values:
+                sanitized_file = sanitize_file_content(file)
+                sanitized_file_byte = await sanitized_file.read()
+                temp_file_path = create_tmp_file(
+                    sanitized_file_byte, sanitized_file.filename
+                )
+                return FileResponse(
+                    temp_file_path,
+                    media_type=sanitized_file.content_type,
+                    filename=f"sanitized_{sanitized_file.filename}",
+                )
+
+        # Perform ocr if enabled
+        if scope_optical_character_recognition:
+            other_scope_values = True
+            if scope_filesize_check or scope_malware_scan:
+                if scope_filesize_check:
+                    if response_data.filesize_check != "PASSED":
+                        other_scope_values = False
+                if scope_malware_scan:
+                    if (
+                        response_data.malware_scan["clamav"]["status"] != "PASSED"
+                        or response_data.malware_scan["yara"]["status"] != "PASSED"
+                    ):
+                        other_scope_values = False
+            if other_scope_values:
+                ocr_byte_file = process_OCR(file_bytes)
+                return StreamingResponse(
+                    ocr_byte_file,
+                    media_type="application/octet-stream",
+                    headers={
+                        "Content-Disposition": f"attachment; filename={file.filename}"
+                    },
+                )
 
         return response_data
 
