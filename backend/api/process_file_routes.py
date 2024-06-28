@@ -17,36 +17,42 @@ router = APIRouter()
     response_model=Union[ProcessFileResponse, FileResponse, StreamingResponse],
 )
 async def process_file_public(
-    scope_filesize_check: bool = Query(..., description="Filesize check (true/false)"),
-    scope_malware_scan: bool = Query(..., description="Malware scan (true/false)"),
-    scope_validation_sanitization: bool = Query(..., description="Validation & Sanitization (true/false)"),
-    scope_image_preprocessing: bool = Query(..., description="Image preprocessing (true/false)"),
-    scope_optical_character_recognition: bool = Query(..., description="Optical character recognition (true/false)"),
-    scope_named_entity_recognition: bool = Query(..., description="Named entity recognition (true/false)"),
-    scope_optimization: bool = Query(..., description="File optimization (true/false)"),
-    scope_renaming: bool = Query(..., description="File renaming (true/false)"),
-    file_category: FileCategory = Query(..., description="Select file category"),
-    file: UploadFile = File(..., description="Load file for operation"),
-    loglevel: str = Query(..., description="Loglevel (Debug, Info, Warning, Error, Critical)"),
-    return_file: bool = Query(..., description="Return processed file (true/false)"),
+    scope_filesize_check: bool = Query(..., description="Confirm filesize check (True/False)"),
+    max_filesize: float = Query(..., description="Maximum allowed filesize in MB"),
+    scope_malware_scan: bool = Query(..., description="Perform malware scan (True/False)"),
+    scope_validation_sanitization: bool = Query(..., description="Perform validation and sanitization (True/False)"),
+    allowed_filetypes: str = Query(..., description="Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png)"),
+    file_category: str = Query(..., description="File category (e.g., invoice, payment reminder, other)"),
+    scope_image_preprocessing: bool = Query(..., description="Perform image preprocessing (True/False)"),
+    scope_optical_character_recognition: bool = Query(..., description="Perform optical character recognition (True/False)"),
+    scope_named_entity_recognition: bool = Query(..., description="Perform named entity recognition (True/False)"),
+    scope_optimization: bool = Query(..., description="Perform file optimization (True/False)"),
+    scope_renaming: bool = Query(..., description="Perform file renaming (True/False)"),
+    file: UploadFile = File(..., description="File to be processed"),
+    loglevel: str = Query(..., description="Logging level (Debug, Info, Warning, Error, Critical)"),
+    return_file: bool = Query(..., description="Return the processed file (True/False)"),
 ):
-    """Processes an uploaded file and returns a response based on parameters
+    """
+    Processes an uploaded file based on the specified parameters.
 
     Args:
-        scope_filesize_check (bool): Filesize check (true/false).
-        scope_malware_scan (bool): Malware scan (true/false).
-        scope_validation_sanitization (bool): Validation & Sanitization (true/false).
-        scope_image_preprocessing (bool): Image preprocessing (true/false).
-        scope_optical_character_recognition (bool): Optical character recognition (true/false).
-        scope_named_entity_recognition (bool): Named entity recognition (true/false).
-        scope_optimization (bool): File optimization (true/false).
-        scope_renaming (bool): File renaming (true/false).
-        file_category (FileCategory): Select file category.
-        file (UploadFile): File to be processed (pdf, jpeg, jfif, png).
-        loglevel (str): Loglevel (Debug, Info, Warning, Error, Critical).
+        scope_filesize_check (bool): Confirm filesize check.
+        max_filesize (float): Maximum allowed filesize in MB.
+        scope_malware_scan (bool): Perform malware scan.
+        scope_validation_sanitization (bool): Perform validation and sanitization.
+        allowed_filetypes (str): Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png).
+        file_category (str): File category (e.g., invoice, payment reminder, other).
+        scope_image_preprocessing (bool): Perform image preprocessing.
+        scope_optical_character_recognition (bool): Perform optical character recognition.
+        scope_named_entity_recognition (bool): Perform named entity recognition.
+        scope_optimization (bool): Perform file optimization.
+        scope_renaming (bool): Perform file renaming.
+        file (UploadFile): File to be processed.
+        loglevel (str): Logging level.
+        return_file (bool): Return the processed file.
 
     Returns:
-        ProcessFileResponse: Contains status code and file id
+        ProcessFileResponse: Contains status code and file ID.
     """
     setup_logging(loglevel)  
     
