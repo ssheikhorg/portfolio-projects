@@ -17,20 +17,20 @@ router = APIRouter()
     response_model=Union[ProcessFileResponse, FileResponse, StreamingResponse],
 )
 async def process_file_public(
-    scope_filesize_check: bool = Query(..., description="Confirm filesize check (True/False)"),
-    max_filesize: float = Query(..., description="Maximum allowed filesize in MB"),
-    scope_malware_scan: bool = Query(..., description="Perform malware scan (True/False)"),
-    scope_validation_sanitization: bool = Query(..., description="Perform validation and sanitization (True/False)"),
-    allowed_filetypes: str = Query(..., description="Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png)"),
-    file_category: str = Query(..., description="File category (e.g., invoice, payment reminder, other)"),
-    scope_image_preprocessing: bool = Query(..., description="Perform image preprocessing (True/False)"),
-    scope_optical_character_recognition: bool = Query(..., description="Perform optical character recognition (True/False)"),
-    scope_named_entity_recognition: bool = Query(..., description="Perform named entity recognition (True/False)"),
-    scope_optimization: bool = Query(..., description="Perform file optimization (True/False)"),
-    scope_renaming: bool = Query(..., description="Perform file renaming (True/False)"),
+    scope_filesize_check: bool = Query(False, description="Confirm filesize check (True/False)"),
+    max_filesize: Optional[float] = Query(None, description="Maximum allowed filesize in MB"),
+    scope_malware_scan: bool = Query(False, description="Perform malware scan (True/False)"),
+    scope_validation_sanitization: bool = Query(False, description="Perform validation and sanitization (True/False)"),
+    allowed_filetypes: Optional[str] = Query(None, description="Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png)"),
+    file_category: Optional[str] = Query(None, description="File category (e.g., invoice, payment reminder, other)"),
+    scope_image_preprocessing: bool = Query(False, description="Perform image preprocessing (True/False)"),
+    scope_optical_character_recognition: bool = Query(False, description="Perform optical character recognition (True/False)"),
+    scope_named_entity_recognition: bool = Query(False, description="Perform named entity recognition (True/False)"),
+    scope_optimization: bool = Query(False, description="Perform file optimization (True/False)"),
+    scope_renaming: bool = Query(False, description="Perform file renaming (True/False)"),
     file: UploadFile = File(..., description="File to be processed"),
-    loglevel: str = Query(..., description="Logging level (Debug, Info, Warning, Error, Critical)"),
-    return_file: bool = Query(..., description="Return the processed file (True/False)"),
+    loglevel: Optional[str] = Query("Info", description="Logging level (Debug, Info, Warning, Error, Critical)"),
+    return_file: bool = Query(False, description="Return the processed file (True/False)"),
 ):
     """
     Processes an uploaded file based on the specified parameters.
