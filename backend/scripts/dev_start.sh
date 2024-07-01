@@ -15,5 +15,5 @@ start_app() {
   uvicorn main:app --reload --host 0.0.0.0 --port 8000
 }
 
-# setup_cron
+setup_cron
 start_app

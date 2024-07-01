@@ -19,8 +19,6 @@ RUN apt-get update && \
     apt-get install -y clamdscan && \
     rm -rf /var/lib/apt/lists/*
 
-# RUN chown -R 100:101 /run/clamav
-
 ## add WORKDIR to enable reloads, uvcorn cannot reload if started from root 
 WORKDIR /app
 
