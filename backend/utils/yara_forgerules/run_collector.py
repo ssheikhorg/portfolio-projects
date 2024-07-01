@@ -3,7 +3,6 @@ This module contains functions for retrieving YARA rules from online repositorie
 """
 
 import datetime
-import logging
 import os
 import shutil
 import time
@@ -25,15 +24,9 @@ def safe_rmtree_contents(path, retries=5, delay=1):
             return
         except OSError as e:
             if e.errno == 16:  # Device or resource busy
-                logging.warning(
-                    f"Contents of directory {path} are busy, retrying in {delay} seconds..."
-                )
                 time.sleep(delay)
             else:
                 raise
-    logging.error(
-        f"Failed to remove contents of directory {path} after {retries} attempts"
-    )
     raise e
 
 
@@ -47,13 +40,10 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos):
             # Remove the existing repo directory and all its contents
             safe_rmtree_contents(repo_staging_dir)
         except Exception as e:
-            logging.error(f"Error removing contents of directory: {e}")
+            pass
 
     # Loop over the repositories
     for repo in yara_repos:
-
-        # Output the repository information to the console in a single line
-        logging.info("Retrieving YARA rules from repository: %s", repo["name"])
 
         # Extract the owner and the repository name from the URL
         repo_url_parts = repo["url"].split("/")
@@ -113,9 +103,6 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos):
                 if file.endswith(".yar") or file.endswith(".yara"):
                     file_path = os.path.join(root, file)
 
-                    # Debug output
-                    logging.debug("Found YARA rule file: %s", file_path)
-
                     # Read the YARA file
                     with open(file_path, "r", encoding="utf-8") as f:
                         yara_file_content = f.read()
@@ -133,22 +120,11 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos):
                                 "rules": yara_rules,
                                 "file_path": relative_path,
                             }
-                            # Debug output
-                            logging.debug(
-                                "Found %d YARA rules in file: %s",
-                                len(yara_rules),
-                                file_path,
-                            )
                             # Append to list of YARA rule sets
                             yara_rule_sets.append(yara_rule_set)
 
                         except Exception as e:
                             print(e)
-                            logging.error(
-                                "Skipping YARA rule in the following "
-                                "file because of a syntax error: %s ",
-                                file_path,
-                            )
 
         # Append the YARA rule repository
         yara_rule_repo = {
@@ -166,13 +142,6 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos):
             "repo_path": repo_folder,
         }
         yara_rule_repo_sets.append(yara_rule_repo)
-
-        # Output the number of YARA rules retrieved from the repository
-        logging.info(
-            "Retrieved %d YARA rules from repository: %s",
-            len(yara_rule_sets),
-            repo["name"],
-        )
 
     # Return the YARA rule sets
     return yara_rule_repo_sets

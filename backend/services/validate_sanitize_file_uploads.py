@@ -12,7 +12,7 @@ def get_mime_type(file: BytesIO):
     Determines MIME type of file based on its content using magic
     """
     file.seek(0)
-    mime_type = magic.from_buffer(file.read(2048), mime=True)
+    mime_type = magic.from_buffer(file.read(2048), mime=True).decode("utf-8")
     file.seek(0)
     return mime_type
 

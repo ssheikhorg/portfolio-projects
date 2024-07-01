@@ -1,20 +1,23 @@
 import cv2
 import numpy as np
+from fastapi import File, UploadFile
 from paddleocr import PaddleOCR
 from pdf2image import convert_from_bytes
 from utils.export_to_pdf import export_pdf
+from utils.miscellaneous import create_tmp_file
 from utils.pre_processing import enhance_brightness, increase_contrast
 
 
-async def process_OCR(file_contents):
+async def process_OCR(file_bytes: bytes, file_name: str):
     # Function to check if file is PDF
-    def is_pdf(file_contents):
-        return file_contents[:4] == b"%PDF"
+    def is_pdf(file_bytes):
+        return file_bytes[:4] == b"%PDF"
 
-    if is_pdf(file_contents):
+    if is_pdf(file_bytes):
         # Convert single-page PDF to image
         try:
-            pdf_images = convert_from_bytes(file_contents)
+            # Convert the PDF bytes to images
+            pdf_images = convert_from_bytes(file_bytes)
             if not pdf_images:
                 return "Failed to convert PDF to image"
 
@@ -28,7 +31,7 @@ async def process_OCR(file_contents):
             return f"Failed to convert PDF to image: {e}"
     else:
         # Convert file contents to a numpy array and read the image
-        np_arr = np.frombuffer(file_contents, np.uint8)
+        np_arr = np.frombuffer(file_bytes, np.uint8)
         input_image = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
 
         if input_image is None:
@@ -71,7 +74,9 @@ async def process_OCR(file_contents):
 
     # Export the PDF with the original file contents and OCR text with coordinates
     try:
-        output_pdf = export_pdf(file_contents, coordinates, image_width, image_height)
+        output_pdf = export_pdf(
+            file_bytes, file_name, coordinates, image_width, image_height
+        )
         if output_pdf is None:
             print("Failed to create output PDF")
             return "Failed to create output PDF"

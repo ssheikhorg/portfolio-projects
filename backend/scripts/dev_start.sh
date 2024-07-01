@@ -12,8 +12,8 @@ setup_cron() {
 
 # Start the FastAPI application
 start_app() {
-  uvicorn api.main:app --reload --host 0.0.0.0 --port 8000
+  uvicorn main:app --reload --host 0.0.0.0 --port 8000
 }
 
-setup_cron
+# setup_cron
 start_app

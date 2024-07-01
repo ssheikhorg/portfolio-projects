@@ -84,7 +84,6 @@ def mycallback(data):
         "strings": [
             {
                 "identifier": string_match.identifier,
-                "is_xor": string_match.is_xor,
                 # Include more details if needed
             }
             for string_match in data["strings"]

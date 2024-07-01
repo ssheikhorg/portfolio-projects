@@ -16,13 +16,9 @@ services:
       - /ziv/shared/scandir:/scandir
       - /var/lib/docker/data/clamav/sockets/:/run/clamav
     depends_on:
-      - redis
       - clamav
     networks:
       - clamav_network
-
-  redis:
-    image: "redis:latest"
 
   clamav:
     image: "clamav/clamav:stable"

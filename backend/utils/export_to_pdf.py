@@ -2,6 +2,7 @@ from io import BytesIO
 
 import cv2
 import numpy as np
+from fastapi import UploadFile
 from pdf2image import convert_from_bytes
 from PIL import Image
 from reportlab.lib.pagesizes import letter
@@ -9,7 +10,9 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
 
-def export_pdf(file_contents, coordinates, image_width, image_height, y_offset=10):
+def export_pdf(
+    file_contents, filename, coordinates, image_width, image_height, y_offset=10
+):
     # Function to check if file is PDF
     def is_pdf(file_contents):
         return file_contents[:4] == b"%PDF"
@@ -77,4 +80,4 @@ def export_pdf(file_contents, coordinates, image_width, image_height, y_offset=1
     # Save the PDF
     c.save()
     output_pdf.seek(0)
-    return output_pdf
+    return UploadFile(filename=filename, file=output_pdf)
