@@ -1,11 +1,10 @@
 import secure
+from api.process_file_routes import router as process_file_router
 from config import settings
-from fastapi import APIRouter, Depends, FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
-from .process_file_routes import router as process_file_router
 
 app = FastAPI(
     title=settings.project_name,

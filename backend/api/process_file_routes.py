@@ -1,8 +1,10 @@
 import asyncio
 from typing import Optional, Union
+
 from config import settings
-from fastapi import APIRouter, File, FileResponse, HTTPException, Query, StreamingResponse, UploadFile, status
-from schema.data_schema import ClamavScanResult, FileCategory, MalwareScanResult, ProcessFileResponse, YaraScanResult
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
+from schema.data_schema import ProcessFileResponse
 from services.perform_ocr import process_OCR
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_functions import check_filesize
@@ -12,86 +14,135 @@ from utils.miscellaneous import create_tmp_file
 
 router = APIRouter()
 
-@router.put(
-    "/processFile",
-    response_model=Union[ProcessFileResponse, FileResponse, StreamingResponse],
-)
+
+@router.put("/processFile", response_model=None)
 async def process_file_public(
-    scope_filesize_check: bool = Query(False, description="Confirm filesize check (True/False)"),
-    max_filesize: Optional[float] = Query(None, description="Maximum allowed filesize in MB"),
-    scope_malware_scan: bool = Query(False, description="Perform malware scan (True/False)"),
-    scope_validation_sanitization: bool = Query(False, description="Perform validation and sanitization (True/False)"),
-    allowed_filetypes: Optional[str] = Query(None, description="Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png)"),
-    file_category: Optional[str] = Query(None, description="File category (e.g., invoice, payment reminder, other)"),
-    scope_image_preprocessing: bool = Query(False, description="Perform image preprocessing (True/False)"),
-    scope_optical_character_recognition: bool = Query(False, description="Perform optical character recognition (True/False)"),
-    scope_named_entity_recognition: bool = Query(False, description="Perform named entity recognition (True/False)"),
-    scope_optimization: bool = Query(False, description="Perform file optimization (True/False)"),
-    scope_renaming: bool = Query(False, description="Perform file renaming (True/False)"),
+    scope_filesize_check: bool = Query(
+        False, description="Confirm filesize check (True/False)"
+    ),
+    scope_malware_scan: bool = Query(
+        False, description="Perform malware scan (True/False)"
+    ),
+    scope_validation_sanitization: bool = Query(
+        False, description="Perform validation and sanitization (True/False)"
+    ),
+    scope_optical_character_recognition: bool = Query(
+        False, description="Perform optical character recognition (True/False)"
+    ),
     file: UploadFile = File(..., description="File to be processed"),
-    loglevel: Optional[str] = Query("Info", description="Logging level (Debug, Info, Warning, Error, Critical)"),
-    return_file: bool = Query(False, description="Return the processed file (True/False)"),
-):
+    loglevel: Optional[str] = Query(
+        "Info", description="Logging level (Debug, Info, Warning, Error, Critical)"
+    ),
+    return_file: bool = Query(
+        False, description="Return the processed file (True/False)"
+    ),
+) -> Union[ProcessFileResponse, FileResponse]:
     """
-    Processes an uploaded file based on the specified parameters.
+    Processes an uploaded file and returns a response based on parameters
 
     Args:
         scope_filesize_check (bool): Confirm filesize check.
-        max_filesize (float): Maximum allowed filesize in MB.
         scope_malware_scan (bool): Perform malware scan.
         scope_validation_sanitization (bool): Perform validation and sanitization.
-        allowed_filetypes (str): Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png).
-        file_category (str): File category (e.g., invoice, payment reminder, other).
-        scope_image_preprocessing (bool): Perform image preprocessing.
         scope_optical_character_recognition (bool): Perform optical character recognition.
-        scope_named_entity_recognition (bool): Perform named entity recognition.
-        scope_optimization (bool): Perform file optimization.
-        scope_renaming (bool): Perform file renaming.
         file (UploadFile): File to be processed.
         loglevel (str): Logging level.
         return_file (bool): Return the processed file.
-
-    Returns:
-        ProcessFileResponse: Contains status code and file ID.
     """
-    setup_logging(loglevel)  
-    
+
+    setup_logging(loglevel)  # Set up logging based on the specified log level
+
     try:
         file_bytes = await file.read()
+        file_name = file.filename
         file_extension = file.filename.split(".")[-1].lower()
-        response_data = ProcessFileResponse()
+        response_data = {}
 
-        ''' Perform filesize check and malware scan before executing the other scopes
-        '''
+        """ Perform filesize check and malware scan before executing the other scopes
+        """
         if scope_filesize_check:
-            response_data.filesize_check = await perform_filesize_check(file_bytes)
-            if response_data.filesize_check == "FAILED":
+            try:
+                check_filesize(file_bytes, settings.max_file_size)
+                response_data["filesize_check"] = "PASSED"
+                logs("info", "File size check passed")
+            except HTTPException:
+                response_data["filesize_check"] = "FAILED"
                 return response_data
-        
+
+        # Perform malware scan if enabled
         if scope_malware_scan:
-            response_data.malware_scan = await perform_malware_scan(file_bytes, file_extension, loglevel)
+            clamav_task = asyncio.to_thread(clamav_scan, file_bytes, file_extension)
+            yara_task = asyncio.to_thread(yara_scan, file_bytes, file_extension)
+
+            # Wait for both tasks to complete
+            clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
+            clamav_status, clamav_details, clamav_error = clamav_result
+
+            # Handle ClamAV scan results
+            if clamav_status == 0:
+                clamav_response = {"status": "PASSED"}
+            elif clamav_status == 1:
+                if loglevel == "Debug":
+                    clamav_response = {"status": "FAILED", "logs": clamav_details}
+                else:
+                    clamav_response = {"status": "FAILED"}
+            else:
+                clamav_response = {"status": "FAILED", "details": clamav_error}
+
+            # Handle YARA scan results
+            if yara_result == "OK":
+                yara_response = {"status": "PASSED"}
+            else:
+                if loglevel == "Debug":
+                    if yara_result == False:
+                        yara_logs = "YARA failed to scan file"
+                    else:
+                        yara_logs = f"Suspicious {', '.join([match.rule for match in yara_result])} found in file"
+                else:
+                    yara_logs = None
+
+                yara_response = {"status": "FAILED", "logs": yara_logs}
+
+            # Set malware scan results in response data
+            response_data["malware_scan"] = {
+                "clamav": clamav_response,
+                "yara": yara_response,
+            }
             if (
-                response_data.malware_scan.clamav.status != "PASSED" or
-                response_data.malware_scan.yara.status != "PASSED"
+                response_data["malware_scan"]["yara"]["status"] != "PASSED"
+                or response_data["malware_scan"]["clamav"]["status"] != "PASSED"
             ):
                 return response_data
-        
-        ''' Proceed with other scopes
-        '''
-        if scope_validation_sanitization:
-            sanitized_response = await handle_validation_sanitization(file)
-            if sanitized_response:
-                return sanitized_response
 
-        if scope_optical_character_recognition:
-            ocr_response = await handle_ocr(file_bytes, file.filename)
-            if ocr_response:
-                return ocr_response
+        if return_file:
+            # Perform sanitization and validation if enabled
+            if scope_validation_sanitization:
+                sanitized_file = await sanitize_file_content(file)
+                sanitized_file_byte = await sanitized_file.read()
+                temp_file_path = create_tmp_file(
+                    sanitized_file_byte, sanitized_file.filename
+                )
+                return FileResponse(
+                    temp_file_path,
+                    media_type=sanitized_file.content_type,
+                    filename=f"sanitized_{sanitized_file.filename}",
+                )
+
+            # Perform ocr if enabled
+            if scope_optical_character_recognition:
+                ocr_file = await process_OCR(file_bytes, file_name)
+                ocr_file_byte = await ocr_file.read()
+                temp_file_path = create_tmp_file(ocr_file_byte, ocr_file.filename)
+                return FileResponse(
+                    temp_file_path,
+                    media_type=ocr_file.content_type,
+                    filename=f"processed_{ocr_file.filename}",
+                )
 
         return response_data
 
     except HTTPException as http_exception:
-        logs("error", f"HTTP exception occurred: {http_exception.detail}")
+        logs("error", f"HTTP exception occurred for this file: {http_exception.detail}")
         raise http_exception
     except Exception as e:
         logs("critical", f"An unexpected error occurred: {str(e)}")
@@ -99,52 +150,3 @@ async def process_file_public(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An internal server error occurred. Please try again later.",
         )
-
-async def perform_filesize_check(file_bytes: bytes) -> str:
-    try:
-        check_filesize(file_bytes, settings.max_file_size)
-        logs("info", "File size check passed")
-        return "PASSED"
-    except HTTPException:
-        logs("warning", "File size check failed")
-        return "FAILED"
-
-async def perform_malware_scan(file_bytes: bytes, file_extension: str, loglevel: str) -> MalwareScanResult:
-    clamav_task = asyncio.to_thread(clamav_scan, file_bytes, file_extension)
-    yara_task = asyncio.to_thread(yara_scan, file_bytes, file_extension)
-    clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
-
-    clamav_status, clamav_details, clamav_error = clamav_result
-    clamav_response = ClamavScanResult(
-        status="PASSED" if clamav_status == 0 else "FAILED",
-        logs=clamav_details if loglevel == "Debug" and clamav_status == 1 else None,
-        details=clamav_error if clamav_status != 0 else None,
-    )
-
-    yara_response = YaraScanResult(
-        status="PASSED" if yara_result == "OK" else "FAILED",
-        logs=None if loglevel != "Debug" else (
-            "YARA failed to scan file" if not yara_result else
-            f"Suspicious {', '.join([match.rule for match in yara_result])} found in file"
-        )
-    )
-
-    return MalwareScanResult(clamav=clamav_response, yara=yara_response)
-
-async def handle_validation_sanitization(file: UploadFile) -> Union[FileResponse, None]:
-    sanitized_file = sanitize_file_content(file)
-    sanitized_file_byte = await sanitized_file.read()
-    temp_file_path = create_tmp_file(sanitized_file_byte, sanitized_file.filename)
-    return FileResponse(
-        temp_file_path,
-        media_type=sanitized_file.content_type,
-        filename=f"{sanitized_file.filename}",
-    )
-
-async def handle_ocr(file_bytes: bytes, filename: str) -> StreamingResponse:
-    ocr_byte_file = process_OCR(file_bytes)
-    return StreamingResponse(
-        ocr_byte_file,
-        media_type="application/octet-stream",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
-    )

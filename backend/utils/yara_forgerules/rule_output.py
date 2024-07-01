@@ -1,4 +1,3 @@
-import logging
 import os
 import traceback
 
@@ -36,17 +35,11 @@ def write_yara_rules_to_single_file(
                             "md5": dummy,
                         },
                     )
-                    logging.info(
-                        "Successfully compiled YARA rule from file: %s"
-                        % rule_set["file_path"]
-                    )
                     yara_rule_file_content += yara_rule_str + "\n"
                 except Exception as e:
-                    logging.error("Error in YARA rule: %s" % rule_set["file_path"])
+                    print(f"Error in YARA rule: {rule_set['file_path']}")
                     traceback.print_exc()
 
     # Write the successfully compiled YARA rules to the output file
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(yara_rule_file_content)
-
-    logging.info(f"YARA rules written to {output_path}")

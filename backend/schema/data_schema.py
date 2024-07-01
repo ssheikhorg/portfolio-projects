@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 class StringMatch(BaseModel):
     identifier: str
-    # is_xor: Any
 
 
 class YaraMatchDetails(BaseModel):
@@ -19,7 +18,7 @@ class YaraMatchDetails(BaseModel):
 
 class YaraScanResult(BaseModel):
     status: str
-    logs: Optional[Union[str, List[str]]] = None
+    logs: Optional[str] = None
 
 
 class ClamavScanResult(BaseModel):

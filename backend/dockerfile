@@ -1,6 +1,6 @@
 FROM python:3.9-slim-buster
 
-RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1 cron git
+RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1 cron git poppler-utils
 
 
 # Download and install YARA
@@ -23,11 +23,6 @@ RUN apt-get update && \
 
 ## add WORKDIR to enable reloads, uvcorn cannot reload if started from root 
 WORKDIR /app
-
-# Set environment variables for Redis
-ENV REDIS_HOST=redis
-ENV REDIS_PORT=6379
-ENV REDIS_DB=0
 
 COPY requirements.txt .
 
