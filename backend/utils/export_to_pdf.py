@@ -8,6 +8,7 @@ from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
+from utils.log_function import logs
 
 
 def export_pdf(
@@ -26,15 +27,18 @@ def export_pdf(
         try:
             pdf_images = convert_from_bytes(file_contents)
             if not pdf_images:
+                logs("error", f"Failed to convert PDF to image")
                 return "Failed to convert PDF to image"
             input_image = pdf_images[0]
         except Exception as e:
+            logs("error", f"Failed to convert PDF to image: {e}")
             return f"Failed to convert PDF to image: {e}"
     else:
         # Convert file contents to a numpy array and read the image
         np_arr = np.frombuffer(file_contents, np.uint8)
         input_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
         if input_image is None:
+            logs("error", f"Failed to decode image")
             return "Failed to decode image"
 
         # Convert the OpenCV image (BGR) to RGB format

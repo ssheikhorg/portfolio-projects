@@ -1,10 +1,9 @@
 import cv2
 import numpy as np
-from fastapi import File, UploadFile
 from paddleocr import PaddleOCR
 from pdf2image import convert_from_bytes
 from utils.export_to_pdf import export_pdf
-from utils.miscellaneous import create_tmp_file
+from utils.log_function import logs
 from utils.pre_processing import enhance_brightness, increase_contrast
 
 
@@ -28,6 +27,7 @@ async def process_OCR(file_bytes: bytes, file_name: str):
             image_width, image_height = pdf_images[0].size
 
         except Exception as e:
+            logs("error", f"Failed to convert PDF to image: {e}")
             return f"Failed to convert PDF to image: {e}"
     else:
         # Convert file contents to a numpy array and read the image
@@ -66,10 +66,9 @@ async def process_OCR(file_bytes: bytes, file_name: str):
                     coordinates.append({"text": text, "coordinates": coords})
 
         except TypeError:
-            print("Error occurred while extracting text and coordinates")
+            logs("error", "Error occurred while extracting text and coordinates")
             return "Error occurred while extracting text and coordinates"
     else:
-        print("No text found in the image")
         return "No text found in the image"
 
     # Export the PDF with the original file contents and OCR text with coordinates
@@ -78,12 +77,12 @@ async def process_OCR(file_bytes: bytes, file_name: str):
             file_bytes, file_name, coordinates, image_width, image_height
         )
         if output_pdf is None:
-            print("Failed to create output PDF")
+            logs("error", "Failed to create output PDF")
             return "Failed to create output PDF"
         print("PDF created successfully")
 
     except Exception as e:
-        print(f"An error occurred while creating the PDF: {e}")
+        logs("error", f"An error occurred while creating the PDF: {e}")
         return f"An error occurred while creating the PDF: {e}"
 
     return output_pdf
