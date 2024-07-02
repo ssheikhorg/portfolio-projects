@@ -10,10 +10,9 @@ from .utils import validate_name, validate_time, validate_days, show_error_messa
 class ScheduleManager(QWidget):
     def __init__(self):
         super().__init__()
-        self.initUI()
-        # self.load_playlist()
+        self.init_ui()
 
-    def initUI(self):
+    def init_ui(self):
         self.setGeometry(300, 300, 600, 400)
         self.setWindowTitle('Playlist Schedule Manager')
 
