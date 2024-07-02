@@ -2,9 +2,10 @@ import cv2
 import numpy as np
 from paddleocr import PaddleOCR
 from pdf2image import convert_from_bytes
-from utils.export_to_pdf import export_pdf
 from utils.log_function import logs
-from utils.pre_processing import enhance_brightness, increase_contrast
+
+from .export_to_pdf import export_pdf
+from .pre_processing import enhance_brightness, increase_contrast
 
 
 async def process_OCR(file_bytes: bytes, file_name: str):

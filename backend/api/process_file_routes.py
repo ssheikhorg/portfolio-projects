@@ -15,7 +15,7 @@ from utils.miscellaneous import create_tmp_file
 router = APIRouter()
 
 
-@router.put("/processFile", response_model=None)
+@router.put("/processFile", response_model=ProcessFileResponse)
 async def process_file_public(
     scope_filesize_check: bool = Query(
         False, description="Confirm filesize check (True/False)"
@@ -36,7 +36,7 @@ async def process_file_public(
     return_file: bool = Query(
         False, description="Return the processed file (True/False)"
     ),
-) -> Union[ProcessFileResponse, FileResponse]:
+):
     """
     Processes an uploaded file and returns a response based on parameters
 
