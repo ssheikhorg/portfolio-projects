@@ -1,10 +1,8 @@
-import sys
 
 import json
 from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout, QLineEdit,
                              QFormLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QMessageBox)
 from PyQt5.QtCore import QTime
-from PyQt5.QtWidgets import QApplication
 
 from .utils import validate_name, validate_time, validate_days, show_error_message
 
@@ -281,13 +279,4 @@ class ScheduleManager(QWidget):
                 self.sort_table()
                 self.update_durations()
         except FileNotFoundError:
-            print("No existing schedule found, starting fresh.")
-
-
-if __name__ == '__main__':
-    print("Starting application")
-    app = QApplication(sys.argv)
-    ex = ScheduleManager()
-    ex.show()
-    print("Application running")
-    sys.exit(app.exec_())
+            show_error_message("No existing schedule found", "No existing schedule found, starting fresh.")
