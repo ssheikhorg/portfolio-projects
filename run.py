@@ -2,7 +2,7 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from playlist.playlist import ScheduleManager
+from playlist.playlist_gui import ScheduleManager
 
 if __name__ == '__main__':
     print("Starting application")
