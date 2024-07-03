@@ -210,23 +210,22 @@ class ScheduleManager(QWidget):
                 duration_secs = start_time.secsTo(next_start_time)
                 if duration_secs < 0:
                     duration_secs += 24 * 3600  # Account for crossing midnight
-                hours, remainder = divmod(duration_secs, 3600)
-                minutes = remainder // 60
-                duration_str = f"{hours} hours {minutes} minutes"
-                self.table_widget.setItem(row, 4, QTableWidgetItem(duration_str))
             else:
                 duration_secs = start_time.secsTo(end_of_day) + 60
                 if row == 0:
                     duration_secs -= start_time.secsTo(start_of_day)
-                hours, remainder = divmod(duration_secs, 3600)
-                minutes = remainder // 60
-                duration_str = f"{hours} hours {minutes} minutes"
-                self.table_widget.setItem(row, 4, QTableWidgetItem(duration_str))
 
-                if row_count > 1:
-                    gaps.append(days)
+            hours, remainder = divmod(duration_secs, 3600)
+            minutes = remainder // 60
+            if minutes < 10:
+                minutes = f"0{minutes}"
+            if hours < 10:
+                hours = f"0{hours}"
+            duration_str = f"{hours}:{minutes}"
+            self.table_widget.setItem(row, 4, QTableWidgetItem(duration_str))
 
-        self.fill_gaps()
+            if row_count > 1:
+                gaps.append(days)
 
     def fill_gaps(self):
         print("Filling gaps")
