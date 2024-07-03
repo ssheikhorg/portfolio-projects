@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Any, Dict, List
 
 from pydantic_settings import BaseSettings
 
@@ -12,6 +13,11 @@ class Settings(BaseSettings):
     clamav_scanned_dir: str
     max_file_size: int
     yara_rule_packages: str = "/ziv/shared/packages/yara_rules.yar"
+    secret_key: str
+    algorithm: str
+    api_tokens: List[Dict[str, Any]]
+    expiration_time_minutes: int
+    issuer: str
 
     class Config:
         env_file = ".env"

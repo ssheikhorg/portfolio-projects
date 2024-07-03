@@ -38,6 +38,11 @@ class FileCategory(str, Enum):
     Other = "Other"
 
 
+class AuthSchema(BaseModel):
+    subject: str
+    issuer: str
+
+
 class ServiceInfo(BaseModel):
     id: Optional[str]
     name: Optional[str]

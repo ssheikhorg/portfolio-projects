@@ -2,13 +2,14 @@ import asyncio
 from typing import Optional, Union
 
 from config import settings
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
-from schema.data_schema import ProcessFileResponse
+from schema.data_schema import AuthSchema, ProcessFileResponse
 from services.perform_ocr import process_OCR
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_functions import check_filesize
 from services.validate_sanitize_file_uploads import sanitize_file_content
+from utils.authentication_header import validate_token
 from utils.log_function import logs, setup_logging
 from utils.miscellaneous import create_tmp_file
 
@@ -17,6 +18,7 @@ router = APIRouter()
 
 @router.put("/processFile", response_model=ProcessFileResponse)
 async def process_file_public(
+    auth_user: AuthSchema = Depends(validate_token),
     scope_filesize_check: bool = Query(
         False, description="Confirm filesize check (True/False)"
     ),
