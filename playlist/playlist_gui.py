@@ -187,9 +187,9 @@ class ScheduleManager(QWidget):
                 duration_str = f"{hours} hours {minutes} minutes"
                 self.table_widget.setItem(row, 4, QTableWidgetItem(duration_str))
             else:
-                duration_secs = start_time.secsTo(end_of_day) + 60  # Until end of the day
+                duration_secs = start_time.secsTo(end_of_day) + 60
                 if row == 0:
-                    duration_secs += 24 * 3600  # Add 24 hours for the first entry
+                    duration_secs -= start_time.secsTo(start_of_day)
                 hours, remainder = divmod(duration_secs, 3600)
                 minutes = remainder // 60
                 duration_str = f"{hours} hours {minutes} minutes"
