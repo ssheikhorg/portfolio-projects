@@ -1,7 +1,17 @@
-
 import json
-from PyQt5.QtWidgets import (QWidget, QPushButton, QVBoxLayout, QLineEdit,
-                             QFormLayout, QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QHBoxLayout, QMessageBox)
+from PyQt5.QtWidgets import (
+    QWidget,
+    QPushButton,
+    QVBoxLayout,
+    QLineEdit,
+    QFormLayout,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QHBoxLayout,
+    QMessageBox,
+)
 from PyQt5.QtCore import QTime
 
 from .utils import validate_name, validate_time, validate_days, show_error_message
@@ -14,38 +24,38 @@ class ScheduleManager(QWidget):
 
     def init_ui(self):
         self.setGeometry(300, 300, 600, 400)
-        self.setWindowTitle('Playlist Schedule Manager')
+        self.setWindowTitle("Playlist Schedule Manager")
 
         layout = QVBoxLayout()
         form_layout = QFormLayout()
 
         self.name_input = QLineEdit(self)
-        self.name_input.setText('Name')
+        self.name_input.setText("Name")
 
         self.time_input = QLineEdit(self)
-        self.time_input.setText('12:00')
+        self.time_input.setText("12:00")
 
         self.days_input = QLineEdit(self)
-        self.days_input.setText('0,1,2,3,4,5,6')
+        self.days_input.setText("0,1,2,3,4,5,6")
 
         self.folder_input = QLineEdit(self)
-        self.folder_input.setText('Folder')
+        self.folder_input.setText("Folder")
 
-        form_layout.addRow(QLabel('Playlist Name:'), self.name_input)
-        form_layout.addRow(QLabel('Start Time (HH:MM):'), self.time_input)
-        form_layout.addRow(QLabel('Days (comma-separated):'), self.days_input)
-        form_layout.addRow(QLabel('Folder Path:'), self.folder_input)
+        form_layout.addRow(QLabel("Playlist Name:"), self.name_input)
+        form_layout.addRow(QLabel("Start Time (HH:MM):"), self.time_input)
+        form_layout.addRow(QLabel("Days (comma-separated):"), self.days_input)
+        form_layout.addRow(QLabel("Folder Path:"), self.folder_input)
 
-        self.load_button = QPushButton('Load Playlist', self)
+        self.load_button = QPushButton("Load Playlist", self)
         self.load_button.clicked.connect(self.load_playlist)
 
-        self.add_button = QPushButton('Add Playlist', self)
+        self.add_button = QPushButton("Add Playlist", self)
         self.add_button.clicked.connect(self.add_playlist)
 
-        self.delete_button = QPushButton('Delete Selected', self)
+        self.delete_button = QPushButton("Delete Selected", self)
         self.delete_button.clicked.connect(self.delete_selected_playlist)
 
-        self.save_button = QPushButton('Save', self)
+        self.save_button = QPushButton("Save", self)
         self.save_button.clicked.connect(self.save_schedule)
 
         button_layout = QHBoxLayout()
@@ -59,7 +69,9 @@ class ScheduleManager(QWidget):
 
         self.table_widget = QTableWidget()
         self.table_widget.setColumnCount(5)
-        self.table_widget.setHorizontalHeaderLabels(['Name', 'Start Time', 'Days', 'Folder', 'Duration'])
+        self.table_widget.setHorizontalHeaderLabels(
+            ["Name", "Start Time", "Days", "Folder", "Duration"]
+        )
         self.table_widget.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table_widget)
 
@@ -74,19 +86,27 @@ class ScheduleManager(QWidget):
         folder = self.folder_input.text()
 
         if not validate_name(name):
-            show_error_message("Invalid Playlist Name",
-                               "The playlist name must be a valid name with a maximum length of 40 characters.")
+            show_error_message(
+                "Invalid Playlist Name",
+                "The playlist name must be a valid name with a maximum length of 40 characters.",
+            )
             return
         if not validate_time(start_time):
-            show_error_message("Invalid Start Time", "The start time must be in HH:MM 24-hour format.")
+            show_error_message(
+                "Invalid Start Time", "The start time must be in HH:MM 24-hour format."
+            )
             return
         if not validate_days(days):
-            show_error_message("Invalid Days",
-                               "The days must be a comma-separated list of numbers (e.g., 0,1,2,3,4,5,6).")
+            show_error_message(
+                "Invalid Days",
+                "The days must be a comma-separated list of numbers (e.g., 0,1,2,3,4,5,6).",
+            )
             return
         if self.check_for_overlap(start_time, days):
-            show_error_message("Overlapping Start Time",
-                               "Another playlist is already scheduled to start at this time on the same days.")
+            show_error_message(
+                "Overlapping Start Time",
+                "Another playlist is already scheduled to start at this time on the same days.",
+            )
             return
 
         row_position = self.table_widget.rowCount()
@@ -102,9 +122,13 @@ class ScheduleManager(QWidget):
     def delete_selected_playlist(self):
         selected_row = self.table_widget.currentRow()
         if selected_row != -1:
-            confirm = QMessageBox.question(self, 'Confirm Deletion',
-                                           'Are you sure you want to delete the selected playlist?',
-                                           QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            confirm = QMessageBox.question(
+                self,
+                "Confirm Deletion",
+                "Are you sure you want to delete the selected playlist?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
             if confirm == QMessageBox.Yes:
                 self.table_widget.removeRow(selected_row)
                 self.sort_table()
@@ -112,14 +136,18 @@ class ScheduleManager(QWidget):
 
     def check_for_overlap(self, start_time, days):
         new_start_time = QTime.fromString(start_time, "HH:mm")
-        new_days = set(days.split(','))
+        new_days = set(days.split(","))
         for row in range(self.table_widget.rowCount()):
             existing_start_time_item = self.table_widget.item(row, 1)
             existing_days_item = self.table_widget.item(row, 2)
             if existing_start_time_item and existing_days_item:
-                existing_start_time = QTime.fromString(existing_start_time_item.text(), "HH:mm")
-                existing_days = set(existing_days_item.text().split(','))
-                if new_start_time == existing_start_time and new_days.intersection(existing_days):
+                existing_start_time = QTime.fromString(
+                    existing_start_time_item.text(), "HH:mm"
+                )
+                existing_days = set(existing_days_item.text().split(","))
+                if new_start_time == existing_start_time and new_days.intersection(
+                    existing_days
+                ):
                     return True
         return False
 
@@ -163,7 +191,7 @@ class ScheduleManager(QWidget):
             start_time_item = self.table_widget.item(row, 1)
             days_item = self.table_widget.item(row, 2)
             start_time = QTime.fromString(start_time_item.text(), "HH:mm")
-            days = set(days_item.text().split(','))
+            days = set(days_item.text().split(","))
 
             next_start_time = None
             next_days = None
@@ -172,7 +200,7 @@ class ScheduleManager(QWidget):
                 next_start_time_item = self.table_widget.item(next_row, 1)
                 next_days_item = self.table_widget.item(next_row, 2)
                 next_start_time = QTime.fromString(next_start_time_item.text(), "HH:mm")
-                next_days = set(next_days_item.text().split(','))
+                next_days = set(next_days_item.text().split(","))
                 if days.intersection(next_days):
                     break
                 next_start_time = None
@@ -216,23 +244,43 @@ class ScheduleManager(QWidget):
         remaining_duration = 24 * 3600 - total_duration
 
         if remaining_duration > 0:
-            last_entry_end_time = QTime.fromString(self.table_widget.item(row_count - 1, 1).text(), "HH:mm").addSecs(
-                int(self.table_widget.item(row_count - 1, 4).text().split()[0]) * 3600 + int(
-                    self.table_widget.item(row_count - 1, 4).text().split()[2]) * 60)
+            last_entry_item = self.table_widget.item(row_count - 1, 1)
             new_entry = {
-                'name': 'Auto Generated',
-                'start_time': last_entry_end_time.toString("HH:mm"),
-                'days': self.table_widget.item(row_count - 1, 2).text(),
-                'folder': 'Auto Generated Folder',
-                'duration': f'{remaining_duration // 3600} hours {remaining_duration % 3600 // 60} minutes'
+                "name": "Auto Generated",
+                "folder": "Auto Generated Folder",
+                "duration": f"{remaining_duration // 3600} hours {remaining_duration % 3600 // 60} minutes",
             }
+            if last_entry_item:
+                last_entry_end_time = QTime.fromString(
+                    last_entry_item.text(), "HH:mm"
+                ).addSecs(
+                    int(self.table_widget.item(row_count - 1, 4).text().split()[0])
+                    * 3600
+                    + int(self.table_widget.item(row_count - 1, 4).text().split()[2])
+                    * 60
+                )
+                new_entry["days"] = self.table_widget.item(row_count - 1, 2).text()
+            else:
+                last_entry_end_time = QTime(0, 0)
+                new_entry["days"] = "0,1,2,3,4,5,6"
+            new_entry["start_time"] = last_entry_end_time.toString("HH:mm")
             row_position = self.table_widget.rowCount()
             self.table_widget.insertRow(row_position)
-            self.table_widget.setItem(row_position, 0, QTableWidgetItem(new_entry['name']))
-            self.table_widget.setItem(row_position, 1, QTableWidgetItem(new_entry['start_time']))
-            self.table_widget.setItem(row_position, 2, QTableWidgetItem(new_entry['days']))
-            self.table_widget.setItem(row_position, 3, QTableWidgetItem(new_entry['folder']))
-            self.table_widget.setItem(row_position, 4, QTableWidgetItem(new_entry['duration']))
+            self.table_widget.setItem(
+                row_position, 0, QTableWidgetItem(new_entry["name"])
+            )
+            self.table_widget.setItem(
+                row_position, 1, QTableWidgetItem(new_entry["start_time"])
+            )
+            self.table_widget.setItem(
+                row_position, 2, QTableWidgetItem(new_entry["days"])
+            )
+            self.table_widget.setItem(
+                row_position, 3, QTableWidgetItem(new_entry["folder"])
+            )
+            self.table_widget.setItem(
+                row_position, 4, QTableWidgetItem(new_entry["duration"])
+            )
 
     def save_schedule(self):
         print("Saving schedule")
@@ -250,32 +298,47 @@ class ScheduleManager(QWidget):
                 days = days_item.text()
                 folder = folder_item.text()
                 duration = duration_item.text() if duration_item else ""
-                schedule.append({
-                    'name': name,
-                    'start_time': start_time,
-                    'days': days,
-                    'folder': folder,
-                    'duration': duration
-                })
+                schedule.append(
+                    {
+                        "name": name,
+                        "start_time": start_time,
+                        "days": days,
+                        "folder": folder,
+                        "duration": duration,
+                    }
+                )
 
-        with open('config.json', 'w') as f:
+        with open("config.json", "w") as f:
             json.dump(schedule, f, indent=4)
         print("Schedule saved to config.json")
 
     def load_playlist(self):
         print("Loading schedule")
         try:
-            with open('playlists.json', 'r') as f:
+            with open("playlists.json", "r") as f:
                 schedule = json.load(f)
                 for entry in schedule:
                     row_position = self.table_widget.rowCount()
                     self.table_widget.insertRow(row_position)
-                    self.table_widget.setItem(row_position, 0, QTableWidgetItem(entry['name']))
-                    self.table_widget.setItem(row_position, 1, QTableWidgetItem(entry['start_time']))
-                    self.table_widget.setItem(row_position, 2, QTableWidgetItem(entry['days']))
-                    self.table_widget.setItem(row_position, 3, QTableWidgetItem(entry['folder']))
-                    self.table_widget.setItem(row_position, 4, QTableWidgetItem(entry['duration']))
+                    self.table_widget.setItem(
+                        row_position, 0, QTableWidgetItem(entry["name"])
+                    )
+                    self.table_widget.setItem(
+                        row_position, 1, QTableWidgetItem(entry["start_time"])
+                    )
+                    self.table_widget.setItem(
+                        row_position, 2, QTableWidgetItem(entry["days"])
+                    )
+                    self.table_widget.setItem(
+                        row_position, 3, QTableWidgetItem(entry["folder"])
+                    )
+                    self.table_widget.setItem(
+                        row_position, 4, QTableWidgetItem(entry["duration"])
+                    )
                 self.sort_table()
                 self.update_durations()
         except FileNotFoundError:
-            show_error_message("No existing schedule found", "No existing schedule found, starting fresh.")
+            show_error_message(
+                "No existing schedule found",
+                "No existing schedule found, starting fresh.",
+            )
