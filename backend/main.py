@@ -1,4 +1,5 @@
 import secure
+from api.issue_token_routes import router as issue_token_router
 from api.process_file_routes import router as process_file_router
 from config import settings
 from fastapi import APIRouter, FastAPI
@@ -49,6 +50,6 @@ def main():
 
 file_service_router = APIRouter(prefix="/file_service")
 file_service_router.include_router(process_file_router)
-
+file_service_router.include_router(issue_token_router)
 
 app.include_router(file_service_router)
