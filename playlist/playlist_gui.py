@@ -115,9 +115,84 @@ class ScheduleManager(QWidget):
         self.table_widget.setItem(row_position, 1, QTableWidgetItem(start_time))
         self.table_widget.setItem(row_position, 2, QTableWidgetItem(days))
         self.table_widget.setItem(row_position, 3, QTableWidgetItem(folder))
-
-        self.sort_table()
+        row_count = self.table_widget.rowCount()
+        self.sort_table(row_count)
         self.update_durations()
+
+    def sort_table(self, row_count: int) -> None:
+        print("Sorting table")
+        rows = []
+        for row in range(row_count):
+            name_item = self.table_widget.item(row, 0)
+            start_time_item = self.table_widget.item(row, 1)
+            days_item = self.table_widget.item(row, 2)
+            folder_item = self.table_widget.item(row, 3)
+            duration_item = self.table_widget.item(row, 4)
+
+            if name_item and start_time_item and days_item and folder_item:
+                name = name_item.text()
+                start_time = start_time_item.text()
+                days = days_item.text()
+                folder = folder_item.text()
+                duration = duration_item.text() if duration_item else ""
+                rows.append((name, start_time, days, folder, duration))
+
+        rows.sort(key=lambda x: QTime.fromString(x[1], "HH:mm"))
+
+        self.table_widget.setRowCount(0)
+        for row_data in rows:
+            row_position = row_count
+            self.table_widget.insertRow(row_position)
+            for col, item in enumerate(row_data):
+                self.table_widget.setItem(row_position, col, QTableWidgetItem(item))
+
+        self.update_durations()
+
+    def update_durations(self):
+        print("Updating durations")
+        row_count = self.table_widget.rowCount()
+        end_of_day = QTime(23, 59)
+        gaps = []
+
+        for row in range(row_count):
+            start_time_item = self.table_widget.item(row, 1)
+            days_item = self.table_widget.item(row, 2)
+            start_time = QTime.fromString(start_time_item.text(), "HH:mm")
+            days = set(days_item.text().split(","))
+
+            next_start_time = None
+            next_days = None
+
+            for next_row in range(row + 1, row_count):
+                next_start_time_item = self.table_widget.item(next_row, 1)
+                next_days_item = self.table_widget.item(next_row, 2)
+                next_start_time = QTime.fromString(next_start_time_item.text(), "HH:mm")
+                next_days = set(next_days_item.text().split(","))
+                if days.intersection(next_days):
+                    break
+                next_start_time = None
+                next_days = None
+
+            if next_start_time:
+                duration_secs = start_time.secsTo(next_start_time)
+                if duration_secs < 0:
+                    duration_secs += 24 * 3600  # Account for crossing midnight
+            else:
+                duration_secs = start_time.secsTo(end_of_day) + 60
+                if row == row_count - 1:
+                    duration_secs = start_time.secsTo(end_of_day) + QTime(0, 0).secsTo(QTime(0, 0)) + 60
+
+            hours, remainder = divmod(duration_secs, 3600)
+            minutes = remainder // 60
+            if minutes < 10:
+                minutes = f"0{minutes}"
+            if hours < 10:
+                hours = f"0{hours}"
+            duration_str = f"{hours}:{minutes}"
+            self.table_widget.setItem(row, 4, QTableWidgetItem(duration_str))
+
+            if row_count > 1:
+                gaps.append(days)
 
     def delete_selected_playlist(self):
         selected_row = self.table_widget.currentRow()
@@ -146,87 +221,10 @@ class ScheduleManager(QWidget):
                 )
                 existing_days = set(existing_days_item.text().split(","))
                 if new_start_time == existing_start_time and new_days.intersection(
-                    existing_days
+                        existing_days
                 ):
                     return True
         return False
-
-    def sort_table(self):
-        print("Sorting table")
-        rows = []
-        for row in range(self.table_widget.rowCount()):
-            name_item = self.table_widget.item(row, 0)
-            start_time_item = self.table_widget.item(row, 1)
-            days_item = self.table_widget.item(row, 2)
-            folder_item = self.table_widget.item(row, 3)
-            duration_item = self.table_widget.item(row, 4)
-
-            if name_item and start_time_item and days_item and folder_item:
-                name = name_item.text()
-                start_time = start_time_item.text()
-                days = days_item.text()
-                folder = folder_item.text()
-                duration = duration_item.text() if duration_item else ""
-                rows.append((name, start_time, days, folder, duration))
-
-        rows.sort(key=lambda x: QTime.fromString(x[1], "HH:mm"))
-
-        self.table_widget.setRowCount(0)
-        for row_data in rows:
-            row_position = self.table_widget.rowCount()
-            self.table_widget.insertRow(row_position)
-            for col, item in enumerate(row_data):
-                self.table_widget.setItem(row_position, col, QTableWidgetItem(item))
-
-        self.update_durations()
-
-    def update_durations(self):
-        print("Updating durations")
-        row_count = self.table_widget.rowCount()
-        end_of_day = QTime(23, 59)
-        start_of_day = QTime(0, 0)
-        gaps = []
-
-        for row in range(row_count):
-            start_time_item = self.table_widget.item(row, 1)
-            days_item = self.table_widget.item(row, 2)
-            start_time = QTime.fromString(start_time_item.text(), "HH:mm")
-            days = set(days_item.text().split(","))
-
-            next_start_time = None
-            next_days = None
-
-            for next_row in range(row + 1, row_count):
-                next_start_time_item = self.table_widget.item(next_row, 1)
-                next_days_item = self.table_widget.item(next_row, 2)
-                next_start_time = QTime.fromString(next_start_time_item.text(), "HH:mm")
-                next_days = set(next_days_item.text().split(","))
-                if days.intersection(next_days):
-                    break
-                next_start_time = None
-                next_days = None
-
-            if next_start_time:
-                duration_secs = start_time.secsTo(next_start_time)
-                if duration_secs < 0:
-                    duration_secs += 24 * 3600  # Account for crossing midnight
-                hours, remainder = divmod(duration_secs, 3600)
-                minutes = remainder // 60
-                duration_str = f"{hours} hours {minutes} minutes"
-                self.table_widget.setItem(row, 4, QTableWidgetItem(duration_str))
-            else:
-                duration_secs = start_time.secsTo(end_of_day) + 60
-                if row == 0:
-                    duration_secs -= start_time.secsTo(start_of_day)
-                hours, remainder = divmod(duration_secs, 3600)
-                minutes = remainder // 60
-                duration_str = f"{hours} hours {minutes} minutes"
-                self.table_widget.setItem(row, 4, QTableWidgetItem(duration_str))
-
-                if row_count > 1:
-                    gaps.append(days)
-
-        self.fill_gaps()
 
     def fill_gaps(self):
         print("Filling gaps")
