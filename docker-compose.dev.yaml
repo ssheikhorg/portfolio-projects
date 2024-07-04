@@ -27,6 +27,8 @@ services:
       - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
       - /var/lib/docker/data/clamav/sockets/:/run/clamav
       - /ziv/shared/scandir:/scandir
+    env_file:
+      - ./backend/clamav.env
     networks:
       - clamav_network
     command: bash -c "chown -R clamav:clamav /run/clamav && clamd"

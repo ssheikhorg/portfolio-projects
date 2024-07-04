@@ -1,13 +1,18 @@
 import asyncio
-from typing import Optional, Union
+import os
+from typing import Optional
 
 from config import settings
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
-from schema.data_schema import AuthSchema, ProcessFileResponse
+from schema.data_schema import AuthSchema, FileCategory, ProcessFileResponse
+from services.filenaming import file_rename
+from services.filesize_check import check_filesize
+from services.named_entity_recognition import named_entity_recogniztion
 from services.perform_ocr import process_OCR
+from services.pre_processing import increase_contrast
 from services.scan_file import clamav_scan, yara_scan
-from services.scope_functions import check_filesize
+from services.scope_optimization import scope_opt
 from services.validate_sanitize_file_uploads import sanitize_file_content
 from utils.authentication_header import validate_token
 from utils.log_function import logs, setup_logging
@@ -31,6 +36,23 @@ async def process_file_public(
     scope_optical_character_recognition: bool = Query(
         False, description="Perform optical character recognition (True/False)"
     ),
+    allowed_filetypes: Optional[str] = Query(
+        None,
+        description="Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png)",
+    ),
+    file_category: FileCategory = Query(..., description="Select file category"),
+    scope_image_preprocessing: bool = Query(
+        False, description="Perform image preprocessing (True/False)"
+    ),
+    scope_named_entity_recognition: bool = Query(
+        False, description="Perform named entity recognition (True/False)"
+    ),
+    scope_optimization: bool = Query(
+        False, description="Perform file optimization (True/False)"
+    ),
+    scope_renaming: bool = Query(
+        False, description="Perform file renaming (True/False)"
+    ),
     file: UploadFile = File(..., description="File to be processed"),
     loglevel: Optional[str] = Query(
         "Info", description="Logging level (Debug, Info, Warning, Error, Critical)"
@@ -40,13 +62,19 @@ async def process_file_public(
     ),
 ):
     """
-    Processes an uploaded file and returns a response based on parameters
-
+    Processes an uploaded file based on the specified parameters.
     Args:
         scope_filesize_check (bool): Confirm filesize check.
+        max_filesize (float): Maximum allowed filesize in MB.
         scope_malware_scan (bool): Perform malware scan.
         scope_validation_sanitization (bool): Perform validation and sanitization.
+        allowed_filetypes (str): Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png).
+        file_category (str): File category (e.g., invoice, payment reminder, other).
+        scope_image_preprocessing (bool): Perform image preprocessing.
         scope_optical_character_recognition (bool): Perform optical character recognition.
+        scope_named_entity_recognition (bool): Perform named entity recognition.
+        scope_optimization (bool): Perform file optimization.
+        scope_renaming (bool): Perform file renaming.
         file (UploadFile): File to be processed.
         loglevel (str): Logging level.
         return_file (bool): Return the processed file.
@@ -116,23 +144,41 @@ async def process_file_public(
             ):
                 return response_data
 
-        if return_file:
-            # Perform sanitization and validation if enabled
-            if scope_validation_sanitization:
-                sanitized_file = await sanitize_file_content(file)
-                sanitized_file_byte = await sanitized_file.read()
-                temp_file_path = create_tmp_file(
-                    sanitized_file_byte, sanitized_file.filename
-                )
-                return FileResponse(
-                    temp_file_path,
-                    media_type=sanitized_file.content_type,
-                    filename=f"sanitized_{sanitized_file.filename}",
-                )
+        # Perform sanitization and validation if enabled
+        if scope_validation_sanitization:
+            try:
+                sanitized_file = await sanitize_file_content(file, allowed_filetypes)
+                response_data = {
+                    "validation_result": "PASSED",
+                    "sanitize_result": "PASSED",
+                }
+            except HTTPException as e:
+                # Check if the raised exception matches the expected HTTPException
+                if e.status_code == status.HTTP_400_BAD_REQUEST and (
+                    "MIME type mismatch" in e.detail
+                    or "File type not allowed" in e.detail
+                ):
+                    logs("error", f"Caught expected HTTPException: {e.detail}")
+                    response_data["validation_result"] = "FAILED"
+                    return response_data
+                elif (
+                    e.status_code == status.HTTP_400_BAD_REQUEST
+                    and "Image sanitization error" in e.detail
+                ):
+                    logs("error", f"Caught expected HTTPException: {e.detail}")
+                    response_data["sanitize_result"] = "FAILED"
+                    return response_data
+                else:
+                    logs("error", f"Unexpected HTTPException: {e.detail}")
+                    raise e  # Re-raise any other HTTPException
 
+        if return_file:
             # Perform ocr if enabled
             if scope_optical_character_recognition:
-                ocr_file = await process_OCR(file_bytes, file_name)
+                file_to_be_processed = (
+                    sanitized_file if scope_validation_sanitization else file_bytes
+                )
+                ocr_file = await process_OCR(file_to_be_processed, file_name)
                 ocr_file_byte = await ocr_file.read()
                 temp_file_path = create_tmp_file(ocr_file_byte, ocr_file.filename)
                 return FileResponse(
@@ -140,7 +186,18 @@ async def process_file_public(
                     media_type=ocr_file.content_type,
                     filename=f"processed_{ocr_file.filename}",
                 )
-
+            # perform renaming if enabled
+            if scope_renaming:
+                new_file_path = file_rename(file_bytes, file_name)
+                return FileResponse(
+                    path=new_file_path, filename=os.path.basename(new_file_path)
+                )
+            if scope_image_preprocessing:
+                increase_contrast()
+            if scope_named_entity_recognition:
+                named_entity_recogniztion()
+            if scope_optimization:
+                scope_opt()
         return response_data
 
     except HTTPException as http_exception:

@@ -6,7 +6,8 @@ from fastapi import HTTPException
 
 
 def get_token_info(api_key):
-    for token in settings.api_toknes:
+    api_data = settings.api_tokens
+    for token in api_data:
         if token["api_key"] == api_key:
             return token
     return None
@@ -19,7 +20,6 @@ def create_jwt_token(api_key: str):
     The payload is then encoded into a JWT and returned.
     """
     token_info = get_token_info(api_key)
-
     if token_info is None:
         raise HTTPException(status_code=400, detail="Invalid API key")
 

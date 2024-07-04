@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     api_tokens: List[Dict[str, Any]]
     expiration_time_minutes: int
     issuer: str
+    cron_schedule: str
 
     class Config:
         env_file = ".env"

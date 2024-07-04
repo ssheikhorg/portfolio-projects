@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException, Query
 from utils.issue_token import create_jwt_token
 
-app = APIRouter()
+router = APIRouter()
 
 
-@app.post("/issueToken")
+@router.post("/issueToken")
 async def issue_token(api_key: str = Query(...)):
     """
     Issues a JWT token from the given api key

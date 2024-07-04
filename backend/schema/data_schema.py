@@ -63,3 +63,5 @@ service_info_response = {}
 class ProcessFileResponse(BaseModel):
     filesize_check: Optional[str] = None
     malware_scan: Optional[MalwareScanResult] = None
+    validation_result: Optional[str] = None
+    sanitize_result: Optional[str] = None

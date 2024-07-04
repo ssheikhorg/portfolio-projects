@@ -76,9 +76,7 @@ async def sanitize_pdf(file: UploadFile):
             pdf.save(output_pdf)
             output_pdf.seek(0)
             logs("info", "PDF sanitization successful: harmful content removed.")
-            return UploadFile(
-                filename=file.filename, file=output_pdf
-            )  # Return output_pdf instead of pdf
+            return output_pdf  # Return output_pdf instead of pdf
     except PdfError as e:
         logs("critical", f"PDF sanitization failed: {str(e)}")
         raise HTTPException(
@@ -107,7 +105,7 @@ async def sanitize_image(file: UploadFile):
                 "info",
                 "Image sanitization successful: metadata and potential threats removed.",
             )
-        return UploadFile(filename=file.filename, file=output_image)
+        return output_image
     except IOError as e:
         logs("critical", f"Image sanitization failed: {str(e)}")
         raise HTTPException(
@@ -116,7 +114,9 @@ async def sanitize_image(file: UploadFile):
         )
 
 
-async def sanitize_file_content(file: UploadFile = File(...)):
+async def sanitize_file_content(
+    file: UploadFile = File(...), allowed_filetypes: str = None
+):
     """
     Determines file type, performs malware scan, and executes the appropriate sanitization function.
     """
@@ -130,6 +130,13 @@ async def sanitize_file_content(file: UploadFile = File(...)):
         "pjpeg": "image/jpeg",
         "png": "image/png",
     }
+    if allowed_filetypes:
+        allowed_extensions = allowed_filetypes.split(",")
+        if file_extension not in allowed_extensions:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File type not allowed",
+            )
     expected_mime_type = mime_map.get(file_extension, "application/octet-stream")
     validate_mime_type(file, expected_mime_type)  # Use clean_file here
 
