@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
 import time
 
+
 def automation():
     driver = webdriver.Edge()
     url = "https://www.barnesandnoble.com/h/books/browse"
@@ -26,5 +27,5 @@ def automation():
     email.send_keys("shsheikhbd@gmail.com")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     automation()

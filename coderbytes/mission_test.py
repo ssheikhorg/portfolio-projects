@@ -18,7 +18,6 @@ def LargestFour(arr):
     return result_sum
 
 
-
 if __name__ == "__main__":
     # keep this function call here
     arr_1 = [1, 1, 1, -5]

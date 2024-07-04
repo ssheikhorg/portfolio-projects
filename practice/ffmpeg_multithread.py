@@ -13,7 +13,9 @@ def hls_func(key, value):
     hls.auto_generate_representations([1080, 720, 480, 360, 240, 144])
     hls.output(f"{Path.cwd()}/output/hls/{key}/hls.m3u8")
     print("Executing thread name :", current_thread().getName())
-    print(f"--- HLS finished in: {round(time.perf_counter() - start_time, 2)} seconds ---")
+    print(
+        f"--- HLS finished in: {round(time.perf_counter() - start_time, 2)} seconds ---"
+    )
 
 
 def dash_func(key, value):
@@ -24,26 +26,31 @@ def dash_func(key, value):
     dash.output(f"{Path.cwd()}/output/dash/{key}/dash.mpd")
     print("Executing thread name:", current_thread().getName())
     print(
-        f"--- DASH finished in: {round(time.perf_counter() - start_time, 2)} seconds ---")
+        f"--- DASH finished in: {round(time.perf_counter() - start_time, 2)} seconds ---"
+    )
 
 
 def main(videos):
     # Multi Threading
     with ThreadPoolExecutor(max_workers=len(videos)) as executor:
-        hls_transcode = {executor.submit(hls_func, k, v): (k, v) for k, v in videos.items()}
+        hls_transcode = {
+            executor.submit(hls_func, k, v): (k, v) for k, v in videos.items()
+        }
         for hls in as_completed(hls_transcode):
             k, v = hls_transcode[hls]
-            print('result: ', hls.result())
+            print("result: ", hls.result())
 
-        dash_transcode = {executor.submit(dash_func, k, v): (k, v) for k, v in videos.items()}
+        dash_transcode = {
+            executor.submit(dash_func, k, v): (k, v) for k, v in videos.items()
+        }
         for dash in as_completed(dash_transcode):
             k, v = dash_transcode[dash]
             # print('k: ', k, 'v: ', v)
 
 
 video_lists = {
-    'one': '30_sec_1080p_wc.mp4',
-    'two': '30_sec_1080p_wc.mp4',
+    "one": "30_sec_1080p_wc.mp4",
+    "two": "30_sec_1080p_wc.mp4",
     # 'three': '30_sec_1080p_wc.mp4',
     # 'four': '30_sec_1080p_wc.mp4',
     # 'five': '30_sec_1080p_wc.mp4',

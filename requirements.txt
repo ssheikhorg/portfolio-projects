@@ -1,0 +1,7 @@
+selenium
+fastapi
+PyQt5
+requests
+
+pyotp
+pydantic

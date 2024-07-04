@@ -15,17 +15,20 @@ Output
 import requests
 import json
 
+
 def clean_data():
-    r = requests.get('https://coderbyte.com/api/challenges/json/json-cleaning')
+    r = requests.get("https://coderbyte.com/api/challenges/json/json-cleaning")
     data = r.json()
-    print(f'Raw data: {data}')
+    print(f"Raw data: {data}")
     cleaned_data = {}
     for k, v in data.items():
-        strp_v = ['N/A', '-', '']
+        strp_v = ["N/A", "-", ""]
 
         # Check if the value is a dictionary and contains stripped values
         if isinstance(v, dict):
-            cleaned_dict = {i_key: i_value for i_key, i_value in v.items() if i_value not in strp_v}
+            cleaned_dict = {
+                i_key: i_value for i_key, i_value in v.items() if i_value not in strp_v
+            }
             if cleaned_dict:
                 cleaned_data[k] = cleaned_dict
         # If it's a list, filter out the stripped values and remove single items
@@ -39,11 +42,10 @@ def clean_data():
         elif v not in strp_v:
             cleaned_data[k] = v
 
-    print(f'Cleaned data: {cleaned_data}')
+    print(f"Cleaned data: {cleaned_data}")
     return json.dumps(cleaned_data)
 
 
 if __name__ == "__main__":
     result = clean_data()
     print(result)
-

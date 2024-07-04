@@ -25,7 +25,9 @@ async def login_form():
 
 
 @app.post("/login")
-async def login(username: str = Form(...), password: str = Form(...), otp: str = Form(...)):
+async def login(
+    username: str = Form(...), password: str = Form(...), otp: str = Form(...)
+):
     if username == "ss" and password == "1122" and otp == "123456":
         return {"message": "Login successful!"}
     return {"message": "Login failed!"}

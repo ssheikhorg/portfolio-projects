@@ -1,5 +1,4 @@
 class DLLNode:
-
     def __init__(self, data):
         self.data = data
         self.next = None
@@ -11,7 +10,7 @@ class DLLNode:
     def get_data(self):
         """Return the self.data attribute."""
         return self.data
-    
+
     def set_data(self, new_data):
         """Replace the existing value of the self.data
         attribute with new_data parameter."""
