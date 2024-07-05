@@ -16,38 +16,35 @@ def aws_login() -> None:
     driver = webdriver.Firefox(service=service)
     driver.get("https://aws.amazon.com/console/")
 
+    sign_in_button = driver.find_element(By.LINK_TEXT, "Sign In")
+    sign_in_button.click()
+
+    # Enter email
+    email_input = WebDriverWait(driver, 10).until(
+        expected_conditions.presence_of_element_located(
+            (By.XPATH, '//input[@id="resolving_input"]')
+        )
+    )
+    email_input.clear()
+    email_input.send_keys(login_data[0])
+
+    # Click on "Next"
+    next_button = WebDriverWait(driver, 10).until(
+        expected_conditions.element_to_be_clickable(
+            (By.XPATH, '//span[text()="Next"]')
+        )
+    )
+    next_button.click()
+
     try:
-        sign_in_button = driver.find_element(By.LINK_TEXT, "Sign In")
-        sign_in_button.click()
-
-        # Enter email
-        email_input = WebDriverWait(driver, 10).until(
+        # Enter password
+        password_input = WebDriverWait(driver, 10).until(
             expected_conditions.presence_of_element_located(
-                (By.XPATH, '//input[@id="resolving_input"]')
+                (By.XPATH, '//input[@id="password"]')
             )
         )
-        email_input.clear()
-        email_input.send_keys(login_data[0])
-
-        # Click on "Next"
-        next_button = WebDriverWait(driver, 10).until(
-            expected_conditions.element_to_be_clickable(
-                (By.XPATH, '//span[text()="Next"]')
-            )
-        )
-        next_button.click()
-
-        try:
-            # Enter password
-            password_input = WebDriverWait(driver, 10).until(
-                expected_conditions.presence_of_element_located(
-                    (By.XPATH, '//input[@id="password"]')
-                )
-            )
-            password_input.clear()
-            password_input.send_keys(login_data[1])
-        except ElementNotInteractableException:
-            pass
+        password_input.clear()
+        password_input.send_keys(login_data[1])
 
         # Click on "Sign in"
         sign_in_button = WebDriverWait(driver, 10).until(
@@ -56,16 +53,8 @@ def aws_login() -> None:
             )
         )
         sign_in_button.click()
+    except ElementNotInteractableException:
+        print("AWS detected the bot and asking for CAPTCHA. Please solve it manually.")
 
-        # # Security check
-        # WebDriverWait(driver, 10).until(
-        #     expected_conditions.presence_of_element_located(
-        #         (By.XPATH, '//input[@id="password"]')
-        #     )
-        # )
-
-
-    except Exception as e:
-        print("Error:", e)
-    finally:
-        driver.quit()
+    # Close the browser
+    driver.quit()
