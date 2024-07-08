@@ -61,6 +61,17 @@ def determine_best_color_space(image):
     return 'YCrCb' if mean_saturation > 100 else 'LAB'
     
 def apply_clahe_to_channel(channel, clip_limit, tile_grid_size):
+    '''
+    Apply CLAHE (Contrast Limited Adaptive Histogram Equalization) to a single channel
+    
+    Parameters:
+    channel (ndarray): Single channel image (e.g., L channel in LAB color space).
+    clip_limit (float): Threshold for contrast limiting.
+    tile_grid_size (tuple of int): Size of grid for histogram equalization.
+    
+    Returns:
+    ndarray: Channel with CLAHE applied.
+    '''
     clahe = cv2.createCLAHE(clipLimit=clip_limit, tileGridSize=tile_grid_size)
     return clahe.apply(channel)
 
