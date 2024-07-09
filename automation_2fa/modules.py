@@ -1,3 +1,7 @@
+"""
+import os
+from dotenv import load_dotenv, find_dotenv
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -9,10 +13,7 @@ import urllib.parse
 AWS_LOGIN_URL = "http://127.0.0.1:8000/"
 DUO_URL = f"otpauth://totp/Duo:testuser?secret=JBSWY3DPEHPK3PXP&issuer=Duo"
 webdriver_path = "path/to/chromedriver"
-
-# Credentials
-USERNAME = "ssheikh"
-PASSWORD = "password"
+load_dotenv(find_dotenv())
 
 
 def extract_secret_key_from_url(url):
@@ -39,10 +40,10 @@ def automate_login():
         # Wait for the username field and enter username
         WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.NAME, "username"))
-        ).send_keys(USERNAME)
+        ).send_keys(
 
         # Enter password
-        driver.find_element(By.NAME, "password").send_keys(PASSWORD)
+        driver.find_element(By.NAME, "password").send_keys(os.getenv("PASSWORD"))
 
         # Generate OTP
         otp = generate_otp(secret_key)
@@ -62,3 +63,4 @@ def automate_login():
     finally:
         # Close the WebDriver
         driver.quit()
+"""
