@@ -69,17 +69,15 @@ def aws_login() -> None:
             )
         )
         sign_in_button.click()
-        time.sleep(50)
         print("Successfully logged in.")
+        time.sleep(50)
         # wait for 30 seconds
         driver.implicitly_wait(30)
     except ElementNotInteractableException:
         print("AWS detected the bot and asking for CAPTCHA. Please solve it manually.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    # Close the browser
-    driver.quit()
+    finally:
+        print("Closing the browser.")
+        driver.quit()
 
 
 if __name__ == "__main__":
