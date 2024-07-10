@@ -1,3 +1,4 @@
+'''
 import os
 import time
 
@@ -77,3 +78,4 @@ def aws_login() -> None:
 
 if __name__ == "__main__":
     aws_login()
+'''

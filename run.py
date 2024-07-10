@@ -1,4 +1,5 @@
-from automation_2fa.automation import aws_login
+from automation_2fa.modules import AwsMfa
 
 if __name__ == "__main__":
-    aws_login()
+    mfa = AwsMfa()
+    mfa.login()

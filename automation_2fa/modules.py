@@ -1,66 +1,107 @@
-"""
 import os
+import time
 from dotenv import load_dotenv, find_dotenv
 
+import pyotp
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import pyotp
-import urllib.parse
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions
 
-# Configuration settings
-AWS_LOGIN_URL = "http://127.0.0.1:8000/"
-DUO_URL = f"otpauth://totp/Duo:testuser?secret=JBSWY3DPEHPK3PXP&issuer=Duo"
-webdriver_path = "path/to/chromedriver"
 load_dotenv(find_dotenv())
 
 
-def extract_secret_key_from_url(url):
-    parsed_url = urllib.parse.urlparse(url)
-    query_params = urllib.parse.parse_qs(parsed_url.query)
-    secret_key = query_params.get("secret", [None])[0]
-    return secret_key
+class AwsMfa:
+    def __init__(self) -> None:
+        self.driver = os.getenv("FIREFOX_DRIVER")
+        self.url = "https://aws.amazon.com/console/"
+        self.secret = os.getenv("AWS_SECRET")
+        self.password = os.getenv("AWS_PASSWORD")
+        self.username = os.getenv("AWS_USERNAME")
 
+    def get_token(self) -> str:
+        totp = pyotp.TOTP(self.secret)
+        return totp.now()
 
-def generate_otp(secret_key):
-    totp = pyotp.TOTP(secret_key)
-    return totp.now()
+    def login(self) -> None:
+        # Set up the webdriver
+        service = Service(executable_path=self.driver)
+        driver = webdriver.Firefox(service=service)
+        driver.get(self.url)
 
+        # Click on "Sign In"
+        sign_in_button = driver.find_element(By.LINK_TEXT, "Sign In")
+        sign_in_button.click()
 
-def automate_login():
-    # Extract secret key
-    secret_key = extract_secret_key_from_url(DUO_URL)
+        # select IAM user
+        iam_user_button = driver.find_element(By.XPATH, "//label[text()='IAM user']")
+        iam_user_button.click()
 
-    # Initialize WebDriver
-    driver = webdriver.Chrome(executable_path=webdriver_path)
-    driver.get(AWS_LOGIN_URL)
-
-    try:
-        # Wait for the username field and enter username
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, "username"))
-        ).send_keys(
-
-        # Enter password
-        driver.find_element(By.NAME, "password").send_keys(os.getenv("PASSWORD"))
-
-        # Generate OTP
-        otp = generate_otp(secret_key)
-
-        # Enter OTP
-        driver.find_element(By.NAME, "otp").send_keys(otp)
-
-        # Submit the form
-        driver.find_element(By.NAME, "submit").click()
-
-        # Wait for login to complete
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "logged_in_element"))
+        # Enter Account ID
+        account_id_input = WebDriverWait(driver, 10).until(
+            expected_conditions.presence_of_element_located(
+                (By.XPATH, '//input[@id="resolving_input"]')
+            )
         )
+        account_id_input.clear()
+        account_id_input.send_keys(os.getenv("AWS_ACCOUNT"))
 
-        print("Login successful!")
-    finally:
-        # Close the WebDriver
-        driver.quit()
-"""
+        # Click on "Next"
+        next_button = WebDriverWait(driver, 10).until(
+            expected_conditions.element_to_be_clickable(
+                (By.XPATH, '//span[text()="Next"]')
+            )
+        )
+        next_button.click()
+
+        try:
+            # IAM user name
+            username_input = WebDriverWait(driver, 20).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, '//input[@id="username"]')
+                )
+            )
+            username_input.clear()
+            username_input.send_keys(self.username)
+
+            # Enter password
+            password_input = WebDriverWait(driver, 20).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, '//input[@id="password"]')
+                )
+            )
+            password_input.clear()
+            password_input.send_keys(self.password)
+
+            # Click on "Sign in"
+            sign_in_button = WebDriverWait(driver, 60).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, '//a[@id="signin_button"]')
+                )
+            )
+            sign_in_button.click()
+
+            # Enter MFA token
+            token_input = WebDriverWait(driver, 10).until(
+                expected_conditions.presence_of_element_located(
+                    (By.XPATH, '//input[@id="mfacode"]')
+                )
+            )
+            token_input.clear()
+            token_input.send_keys(self.get_token())
+
+            # Click on "Submit"
+            submit_button = WebDriverWait(driver, 10).until(
+                expected_conditions.element_to_be_clickable(
+                    (By.XPATH, '//a[@id="submitMfa_button"]')
+                )
+            )
+            submit_button.click()
+            print("Successfully logged in.")
+            time.sleep(50)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+        finally:
+            print("Closing the browser.")
+            driver.quit()
