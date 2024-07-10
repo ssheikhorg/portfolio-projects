@@ -4,7 +4,6 @@ import time
 from dotenv import load_dotenv, find_dotenv
 
 from selenium import webdriver
-from selenium.common import ElementNotInteractableException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support.wait import WebDriverWait
@@ -14,10 +13,8 @@ load_dotenv(find_dotenv())
 
 
 def aws_login() -> None:
-    ff_driver = "D:\\webdrivers\\geckodriver.exe"
-
     # Set up the webdriver
-    service = Service(executable_path=ff_driver)
+    service = Service(executable_path=os.getenv("FIREFOX_DRIVER"))
     driver = webdriver.Firefox(service=service)
     driver.get("https://aws.amazon.com/console/")
 
@@ -63,7 +60,7 @@ def aws_login() -> None:
         password_input.send_keys(os.getenv("AWS_PASSWORD"))
 
         # Click on "Sign in"
-        sign_in_button = WebDriverWait(driver, 20).until(
+        sign_in_button = WebDriverWait(driver, 60).until(
             expected_conditions.element_to_be_clickable(
                 (By.XPATH, '//a[@id="signin_button"]')
             )
@@ -71,10 +68,8 @@ def aws_login() -> None:
         sign_in_button.click()
         print("Successfully logged in.")
         time.sleep(50)
-        # wait for 30 seconds
-        driver.implicitly_wait(30)
-    except ElementNotInteractableException:
-        print("AWS detected the bot and asking for CAPTCHA. Please solve it manually.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
     finally:
         print("Closing the browser.")
         driver.quit()
