@@ -105,3 +105,8 @@ class AwsMfa:
         finally:
             print("Closing the browser.")
             driver.quit()
+
+
+if __name__ == "__main__":
+    mfa = AwsMfa()
+    mfa.login()
