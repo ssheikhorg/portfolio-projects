@@ -5,3 +5,4 @@ requests
 
 pyotp
 pydantic
+python-ffmpeg-video-streaming
