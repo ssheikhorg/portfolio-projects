@@ -1,8 +1,12 @@
-selenium
 fastapi
+flask
+
+selenium
 PyQt5
 requests
 
 pyotp
 pydantic
 python-ffmpeg-video-streaming
+
+beautifulsoup4
