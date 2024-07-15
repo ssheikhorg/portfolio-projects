@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Tuple, Union
 
 import yara
 from config import settings
@@ -7,7 +7,9 @@ from utils.log_function import logs
 from utils.miscellaneous import Command, save_file
 
 
-def clamav_scan(file_bytes: bytes, file_extension: str):
+def clamav_scan(
+    file_bytes: bytes, file_extension: str
+) -> Union[Tuple[int, str, str], bool]:
     """
     Perform a ClamAV scan on the provided file.
 
@@ -16,18 +18,17 @@ def clamav_scan(file_bytes: bytes, file_extension: str):
         file_extension (str): Extension of the file.
 
     Returns:
-        tuple: Tuple containing exit code, response, and error message.
+        Union[Tuple[int, str, str], bool]: Tuple containing exit code, response, and error message, or False if failed.
     """
     try:
         file_path = save_file(file_bytes, f"file_to_scan.{file_extension}")
-        scan_res = scan_with_clamav(file_path)
-        return scan_res
+        return scan_with_clamav(file_path)
     except Exception as e:
-        logs("error", f"ClamAV scan failed: {str(e)}")  # Log ClamAV scan failure
+        logs("error", f"ClamAV scan failed: {str(e)}")
         return False
 
 
-def scan_with_clamav(temp_file):
+def scan_with_clamav(temp_file: str) -> Tuple[int, str, str]:
     """
     Perform ClamAV scan using clamdscan.
 
@@ -35,7 +36,7 @@ def scan_with_clamav(temp_file):
         temp_file (str): Temporary file path for scanning.
 
     Returns:
-        tuple: Tuple containing exit code, response, and error message.
+        Tuple[int, str, str]: Tuple containing exit code, response, and error message.
     """
     cmd_template = "clamdscan {file_path}"
     cmd = Command(cmd_template)
@@ -59,14 +60,13 @@ def yara_scan(
     try:
         rules = yara.compile(filepath=settings.yara_rule_packages)
         file_path = save_file(file_bytes, f"file_to_scan.{file_extension}")
-        scan_res = scan_with_yara(file_path, rules)
-        return scan_res
+        return scan_with_yara(file_path, rules)
     except Exception as e:
-        logs("error", f"YARA scan failed: {str(e)}")  # Log YARA scan failure
+        logs("error", f"YARA scan failed: {str(e)}")
         return False
 
 
-def mycallback(data):
+def mycallback(data: dict) -> int:
     """
     Callback function for YARA matches.
 
@@ -76,24 +76,25 @@ def mycallback(data):
     Returns:
         int: YARA callback status.
     """
-    match_detail = {
-        "rule": data["rule"],
-        "namespace": data["namespace"],
-        "tags": data["tags"],
-        "meta": data["meta"],
-        "strings": [
+    match_detail = YaraMatchDetails(
+        rule=data["rule"],
+        namespace=data["namespace"],
+        tags=data["tags"],
+        meta=data["meta"],
+        strings=[
             {
                 "identifier": string_match.identifier,
-                # Include more details if needed
             }
             for string_match in data["strings"]
         ],
-    }
+    )
     logs("info", f"Match detail for YARA scan: {match_detail}")
     return yara.CALLBACK_CONTINUE
 
 
-def scan_with_yara(file_path, rules):
+def scan_with_yara(
+    file_path: str, rules: yara.Rules
+) -> Union[str, List[YaraMatchDetails]]:
     """
     Perform YARA scan using compiled rules.
 
