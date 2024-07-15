@@ -10,7 +10,7 @@ from services.filenaming import file_rename
 from services.filesize_check import check_filesize
 from services.named_entity_recognition import named_entity_recogniztion
 from services.perform_ocr import process_OCR
-from services.pre_processing import increase_contrast
+from services.pre_processing import image_processing
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_optimization import scope_opt
 from services.validate_sanitize_file_uploads import sanitize_file_content
@@ -33,16 +33,16 @@ async def process_file_public(
     scope_validation_sanitization: bool = Query(
         False, description="Perform validation and sanitization (True/False)"
     ),
-    scope_optical_character_recognition: bool = Query(
-        False, description="Perform optical character recognition (True/False)"
-    ),
     allowed_filetypes: Optional[str] = Query(
         None,
-        description="Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png)",
+        description="Allowed file types (comma-separated, e.g.,pdf,jpeg,jfif,png)",
     ),
     file_category: FileCategory = Query(..., description="Select file category"),
     scope_image_preprocessing: bool = Query(
         False, description="Perform image preprocessing (True/False)"
+    ),
+    scope_optical_character_recognition: bool = Query(
+        False, description="Perform optical character recognition (True/False)"
     ),
     scope_named_entity_recognition: bool = Query(
         False, description="Perform named entity recognition (True/False)"
@@ -63,6 +63,7 @@ async def process_file_public(
 ):
     """
     Processes an uploaded file based on the specified parameters.
+    *If pdf is sent for ocr processing make sure not to send large pdf sizes
     Args:
         scope_filesize_check (bool): Confirm filesize check.
         max_filesize (float): Maximum allowed filesize in MB.
@@ -173,18 +174,34 @@ async def process_file_public(
                     raise e  # Re-raise any other HTTPException
 
         if return_file:
+            file_to_be_processed = file_bytes
+            # perform image processessing if enabled
+            if scope_image_preprocessing:
+                if scope_validation_sanitization:
+                    file_to_be_processed = sanitized_file
+                processed_image = image_processing(file_to_be_processed)
             # Perform ocr if enabled
             if scope_optical_character_recognition:
-                file_to_be_processed = (
-                    sanitized_file if scope_validation_sanitization else file_bytes
+                if scope_image_preprocessing and processed_image is not False:
+                    file_to_be_processed = processed_image
+                else:
+                    if (
+                        scope_validation_sanitization
+                        and not scope_image_preprocessing
+                        or scope_validation_sanitization
+                        and scope_image_preprocessing
+                        and not processed_image
+                    ):
+                        file_to_be_processed = sanitized_file
+                ocr_file = await process_OCR(
+                    file_name=file_name,
+                    file_extension=file_extension,
+                    file_bytes=file_to_be_processed,
                 )
-                ocr_file = await process_OCR(file_to_be_processed, file_name)
-                ocr_file_byte = await ocr_file.read()
-                temp_file_path = create_tmp_file(ocr_file_byte, ocr_file.filename)
                 return FileResponse(
-                    temp_file_path,
-                    media_type=ocr_file.content_type,
-                    filename=f"processed_{ocr_file.filename}",
+                    ocr_file,
+                    media_type=file.content_type,
+                    filename=f"processed_{file_name}",
                 )
             # perform renaming if enabled
             if scope_renaming:
@@ -192,8 +209,6 @@ async def process_file_public(
                 return FileResponse(
                     path=new_file_path, filename=os.path.basename(new_file_path)
                 )
-            if scope_image_preprocessing:
-                increase_contrast()
             if scope_named_entity_recognition:
                 named_entity_recogniztion()
             if scope_optimization:

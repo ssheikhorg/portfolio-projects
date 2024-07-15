@@ -3,8 +3,19 @@ import shlex
 import subprocess
 import tempfile
 import uuid
+from io import BytesIO
 
 from config import settings
+from PIL import Image
+
+
+def is_image(file_bytes: bytes) -> bool:
+    try:
+        image = Image.open(BytesIO(file_bytes))
+        image.verify()  # Verify that it is an image
+        return True
+    except (IOError, SyntaxError):
+        return False
 
 
 def save_file(file_bytes, file_name):

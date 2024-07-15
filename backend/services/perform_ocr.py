@@ -1,89 +1,158 @@
+import os
+import tempfile
+from typing import Optional
+
 import cv2
+import fitz
 import numpy as np
-from paddleocr import PaddleOCR
-from pdf2image import convert_from_bytes
+from fastapi import HTTPException, status
+from paddleocr import PaddleOCR, draw_ocr
+from PIL import Image
 from utils.log_function import logs
-
-from .export_to_pdf import export_pdf
-from .pre_processing import enhance_brightness, increase_contrast
+from utils.miscellaneous import create_tmp_file
 
 
-async def process_OCR(file_bytes: bytes, file_name: str):
-    # Function to check if file is PDF
-    def is_pdf(file_bytes):
-        return file_bytes[:4] == b"%PDF"
+def save_pdf_ocr(result, pdf_path, tmp_dir: str) -> str:
+    logs(
+        "info",
+        f"Starting OCR save process for PDF: {pdf_path} in temporary directory: {tmp_dir}",
+    )
+    # Extract images from PDF, map OCR results, and save them as new images
+    imgs = []
+    with fitz.open(pdf_path) as pdf:
+        for pg in range(len(pdf)):
+            page = pdf[pg]
+            mat = fitz.Matrix(2, 2)
+            pm = page.get_pixmap(matrix=mat, alpha=False)
+            if pm.width > 2000 or pm.height > 2000:
+                pm = page.get_pixmap(matrix=fitz.Matrix(1, 1), alpha=False)
+            img = Image.frombytes("RGB", [pm.width, pm.height], pm.samples)
+            img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            imgs.append(img)
+    logs("info", f"Extracted {len(imgs)} images from PDF.")
 
-    if is_pdf(file_bytes):
-        # Convert single-page PDF to image
-        try:
-            # Convert the PDF bytes to images
-            pdf_images = convert_from_bytes(file_bytes)
-            if not pdf_images:
-                return "Failed to convert PDF to image"
+    # Map OCR results to images and save each image
+    for idx in range(len(result)):
+        res = result[idx]
+        if res is None:
+            continue
+        image = imgs[idx]
+        boxes = [line[0] for line in res]
+        txts = [line[1][0] for line in res]
+        scores = [line[1][1] for line in res]
+        im_show = draw_ocr(
+            image, boxes, txts, scores, font_path="/app/static/fonts/german.ttf"
+        )
+        im_show = Image.fromarray(im_show)
+        image_path = os.path.join(tmp_dir, f"result_page_{idx}.jpg")
+        im_show.save(image_path)
+        logs("info", f"Saved OCR image {image_path}")
 
-            # Convert the first page of PDF to grayscale image
-            input_image = cv2.cvtColor(np.array(pdf_images[0]), cv2.COLOR_RGB2GRAY)
+    # Convert modified images back into a single PDF
+    image_paths = [
+        os.path.join(tmp_dir, f"result_page_{i}.jpg") for i in range(len(result))
+    ]
+    logs("info", f"Image paths for final PDF: {image_paths}")
+    images = [Image.open(img_path).convert("RGB") for img_path in image_paths]
+    final_pdf_path = os.path.join(tmp_dir, "result.pdf")
+    images[0].save(final_pdf_path, save_all=True, append_images=images[1:])
+    logs("info", f"Final OCR PDF saved at: {final_pdf_path}")
+    return final_pdf_path
 
-            # Get image dimensions for later use in export_pdf
-            image_width, image_height = pdf_images[0].size
 
-        except Exception as e:
-            logs("error", f"Failed to convert PDF to image: {e}")
-            return f"Failed to convert PDF to image: {e}"
-    else:
-        # Convert file contents to a numpy array and read the image
-        np_arr = np.frombuffer(file_bytes, np.uint8)
-        input_image = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
+def save_image_ocr(result, npimage):
+    logs("info", "Starting OCR save process for image.")
+    result = result[0]
+    image = Image.fromarray(cv2.cvtColor(npimage, cv2.COLOR_BGR2RGB))
+    boxes = [line[0] for line in result]
+    txts = [line[1][0] for line in result]
+    scores = [line[1][1] for line in result]
+    im_show = draw_ocr(
+        image, boxes, txts, scores, font_path="/app/static/fonts/german.ttf"
+    )
+    im_show = Image.fromarray(im_show)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+        im_show.save(tmp_file, format="JPEG")
+        temp_file_path = tmp_file.name
+    logs("info", f"Saved OCR image at: {temp_file_path}")
+    return temp_file_path
 
-        if input_image is None:
-            return "Failed to decode image"
 
-        # Get image dimensions for later use in export_pdf
-        image_width = input_image.shape[1]
-        image_height = input_image.shape[0]
+def save_unprocessed_image_ocr(result, img_path):
+    logs("info", f"Starting OCR save process for unprocessed image: {img_path}")
+    result = result[0]
+    image = Image.open(img_path).convert("RGB")
+    boxes = [line[0] for line in result]
+    txts = [line[1][0] for line in result]
+    scores = [line[1][1] for line in result]
+    im_show = draw_ocr(
+        image, boxes, txts, scores, font_path="/app/static/fonts/german.ttf"
+    )
+    im_show = Image.fromarray(im_show)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
+        im_show.save(tmp_file, format="JPEG")
+        temp_file_path = tmp_file.name
+    logs("info", f"Saved OCR image at: {temp_file_path}")
+    return temp_file_path
 
-    # Enhance the brightness
-    bright_image = enhance_brightness(input_image, 1.3)
 
-    # Increase the contrast
-    contrast_image = increase_contrast(bright_image)
+async def process_OCR(
+    file_name: str,
+    file_extension: str,
+    file_bytes: Optional[bytes] = None,
+    contrast_image: Optional[np.ndarray] = None,
+):
+    logs(
+        "info", f"Processing OCR for file: {file_name} with extension: {file_extension}"
+    )
+    # Validate file extension
+    mime_map = {
+        "pdf": "application/pdf",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "jfif": "image/jpeg",
+        "pjpeg": "image/jpeg",
+        "png": "image/png",
+    }
+
+    if file_extension.lower() not in mime_map:
+        logs("error", f"Unsupported file extension: {file_extension}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file extension: {file_extension}",
+        )
 
     # Instantiate an OCR agent
-    ocr_agent = PaddleOCR(lang="german", det_algorithm="DB")
+    ocr_agent = PaddleOCR(
+        use_angle=True,
+        lang="german",
+    )
 
-    # Use the OCR agent to extract text from the image
-    result = ocr_agent.ocr(contrast_image, cls=False)
-
-    # Initialize list to store text with coordinates
-    coordinates = []
-
-    # Check if result is not None
-    if result is not None:
-        try:
-            for line in result:
-                for word_info in line:
-                    text = word_info[1][0]
-                    coords = word_info[0]
-                    coordinates.append({"text": text, "coordinates": coords})
-
-        except TypeError:
-            logs("error", "Error occurred while extracting text and coordinates")
-            return "Error occurred while extracting text and coordinates"
+    if file_bytes:
+        if file_extension.lower() == "pdf":
+            # Process PDF
+            with tempfile.TemporaryDirectory() as tmp_dir:
+                tmp_pdf_path = create_tmp_file(file_bytes, file_name)
+                result = ocr_agent.ocr(tmp_pdf_path, cls=True)
+                logs("info", f"OCR result for PDF: {result}")
+                ocr_file_path = save_pdf_ocr(result, tmp_pdf_path, tmp_dir)
+                return ocr_file_path
+        else:
+            tmp_img_path = create_tmp_file(file_bytes, file_name)
+            result = ocr_agent.ocr(tmp_img_path, cls=True)
+            logs("info", f"OCR result for image: {result}")
+            ocr_file_path = save_unprocessed_image_ocr(result, tmp_img_path)
+            return ocr_file_path
     else:
-        return "No text found in the image"
-
-    # Export the PDF with the original file contents and OCR text with coordinates
-    try:
-        output_pdf = export_pdf(
-            file_bytes, file_name, coordinates, image_width, image_height
-        )
-        if output_pdf is None:
-            logs("error", "Failed to create output PDF")
-            return "Failed to create output PDF"
-        print("PDF created successfully")
-
-    except Exception as e:
-        logs("error", f"An error occurred while creating the PDF: {e}")
-        return f"An error occurred while creating the PDF: {e}"
-
-    return output_pdf
+        if contrast_image is not None:
+            # Process image
+            result = ocr_agent.ocr(contrast_image, cls=True)
+            logs("info", f"OCR result for contrast image: {result}")
+            ocr_file_path = save_image_ocr(result, contrast_image)
+            return ocr_file_path
+        else:
+            logs("error", "No contrast image provided for image processing")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No contrast image provided for image processing",
+            )

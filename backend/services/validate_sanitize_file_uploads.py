@@ -76,7 +76,7 @@ async def sanitize_pdf(file: UploadFile):
             pdf.save(output_pdf)
             output_pdf.seek(0)
             logs("info", "PDF sanitization successful: harmful content removed.")
-            return output_pdf  # Return output_pdf instead of pdf
+            return output_pdf.getvalue()  # Return output_pdf instead of pdf
     except PdfError as e:
         logs("critical", f"PDF sanitization failed: {str(e)}")
         raise HTTPException(
@@ -105,7 +105,7 @@ async def sanitize_image(file: UploadFile):
                 "info",
                 "Image sanitization successful: metadata and potential threats removed.",
             )
-        return output_image
+        return output_image.getvalue()
     except IOError as e:
         logs("critical", f"Image sanitization failed: {str(e)}")
         raise HTTPException(
@@ -132,7 +132,7 @@ async def sanitize_file_content(
     }
     if allowed_filetypes:
         allowed_extensions = allowed_filetypes.split(",")
-        if file_extension not in allowed_extensions:
+        if f".{file_extension}" not in allowed_extensions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"File type not allowed",
