@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     expiration_time_minutes: int
     issuer: str
     cron_schedule: str
+    allowed_filetypes: str
 
     class Config:
         env_file = ".env"

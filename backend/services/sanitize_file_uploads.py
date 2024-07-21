@@ -7,41 +7,12 @@ from PIL import Image
 from utils.log_function import logs
 
 
-def get_mime_type(file: BytesIO):
-    """
-    Determines MIME type of file based on its content using magic
-    """
-    file.seek(0)
-    mime_type = magic.from_buffer(file.read(2048), mime=True).decode("utf-8")
-    file.seek(0)
-    return mime_type
-
-
-def validate_mime_type(file: UploadFile, expected_mime_type: str):
-    """
-    Validates MIME type of file against expected formats using content sniffing.
-    Raises HTTPException for unsupported or mismatched formats.
-    """
-    actual_mime_type = get_mime_type(file.file)
-    if actual_mime_type != expected_mime_type:
-        logs(
-            "warning",
-            f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}",
-        )
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}.",
-        )
-    logs("info", f"MIME type validated based on content: {actual_mime_type}")
-
-
-async def sanitize_pdf(file: UploadFile):
+async def sanitize_pdf(file_bytes: bytes):
     """
     Sanitizes PDF files using pikepdf to remove potential harmful content and metadata.
     """
     try:
         # Read the file into a BytesIO object
-        file_bytes = await file.read()
         file_like_object = BytesIO(file_bytes)
 
         with Pdf.open(file_like_object) as pdf:
@@ -85,13 +56,12 @@ async def sanitize_pdf(file: UploadFile):
         )
 
 
-async def sanitize_image(file: UploadFile):
+async def sanitize_image(file_bytes: bytes):
     """
     Sanitizes image files by resaving them to strip out potential embedded harmful content and metadata.
     """
     try:
         # Read the file into a BytesIO object
-        file_bytes = await file.read()
         file_like_object = BytesIO(file_bytes)
 
         with Image.open(file_like_object) as image:
@@ -114,32 +84,11 @@ async def sanitize_image(file: UploadFile):
         )
 
 
-async def sanitize_file_content(
-    file: UploadFile = File(...), allowed_filetypes: str = None
-):
+async def sanitize_file_content(file: bytes, file_extension: str):
     """
-    Determines file type, performs malware scan, and executes the appropriate sanitization function.
+    executes the appropriate sanitization function.
     """
-
-    file_extension = file.filename.split(".")[-1].lower()
-    mime_map = {
-        "pdf": "application/pdf",
-        "jpg": "image/jpeg",
-        "jpeg": "image/jpeg",
-        "jfif": "image/jpeg",
-        "pjpeg": "image/jpeg",
-        "png": "image/png",
-    }
-    if allowed_filetypes:
-        allowed_extensions = allowed_filetypes.split(",")
-        if f".{file_extension}" not in allowed_extensions:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"File type not allowed",
-            )
-    expected_mime_type = mime_map.get(file_extension, "application/octet-stream")
-    validate_mime_type(file, expected_mime_type)  # Use clean_file here
-
+    # Use clean_file here
     if file_extension == "pdf":
         sanitized_file = await sanitize_pdf(file)  # Use clean_file here
     else:

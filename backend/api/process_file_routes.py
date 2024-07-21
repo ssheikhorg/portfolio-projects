@@ -2,36 +2,43 @@ import asyncio
 import os
 from typing import Optional
 
+import cv2
+import numpy as np
 from config import settings
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from schema.data_schema import AuthSchema, FileCategory, ProcessFileResponse
+from schema.data_schema import AuthSchema, FileCategory
 from services.filenaming import file_rename
 from services.filesize_check import check_filesize
 from services.named_entity_recognition import named_entity_recogniztion
 from services.perform_ocr import process_OCR
 from services.pre_processing import image_processing
+from services.sanitize_file_uploads import sanitize_file_content
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_optimization import scope_opt
-from services.validate_sanitize_file_uploads import sanitize_file_content
+from services.validate_file import validate_file
 from utils.authentication_header import validate_token
 from utils.log_function import logs, setup_logging
-from utils.miscellaneous import create_tmp_file
+from utils.miscellaneous import create_tmp_file, get_mime_type
 
 router = APIRouter()
 
 
-@router.put("/processFile", response_model=ProcessFileResponse)
+@router.put("/processFile", response_class=FileResponse)
 async def process_file_public(
-    auth_user: AuthSchema = Depends(validate_token),
+    # auth_user: AuthSchema = Depends(validate_token),
     scope_filesize_check: bool = Query(
         False, description="Confirm filesize check (True/False)"
     ),
+    max_file_size: Optional[int] = Query(None, description="max file size in MB"),
     scope_malware_scan: bool = Query(
         False, description="Perform malware scan (True/False)"
     ),
-    scope_validation_sanitization: bool = Query(
-        False, description="Perform validation and sanitization (True/False)"
+    scope_validation: bool = Query(
+        False, description="Perform validation (True/False)"
+    ),
+    scope_sanitization: bool = Query(
+        False, description="perform sanitization(True/False)"
     ),
     allowed_filetypes: Optional[str] = Query(
         None,
@@ -56,9 +63,6 @@ async def process_file_public(
     file: UploadFile = File(..., description="File to be processed"),
     loglevel: Optional[str] = Query(
         "Info", description="Logging level (Debug, Info, Warning, Error, Critical)"
-    ),
-    return_file: bool = Query(
-        False, description="Return the processed file (True/False)"
     ),
 ):
     """
@@ -87,133 +91,90 @@ async def process_file_public(
         file_bytes = await file.read()
         file_name = file.filename
         file_extension = file.filename.split(".")[-1].lower()
-        response_data = {}
 
-        """ Perform filesize check and malware scan before executing the other scopes
-        """
+        # Process the file through each scope sequentially
+        processed_file = file_bytes
+        is_ndarray = False
+        file_path = None
+
         if scope_filesize_check:
             try:
-                check_filesize(file_bytes, settings.max_file_size)
-                response_data["filesize_check"] = "PASSED"
+                allowed_max_value = (
+                    max_file_size * 1048576 if max_file_size else settings.max_file_size
+                )
+                check_filesize(processed_file, allowed_max_value)
                 logs("info", "File size check passed")
             except HTTPException:
-                response_data["filesize_check"] = "FAILED"
-                return response_data
+                raise HTTPException(status_code=700, detail="File size check failed")
 
-        # Perform malware scan if enabled
         if scope_malware_scan:
-            clamav_task = asyncio.to_thread(clamav_scan, file_bytes, file_extension)
-            yara_task = asyncio.to_thread(yara_scan, file_bytes, file_extension)
+            clamav_task = asyncio.to_thread(clamav_scan, processed_file, file_extension)
+            yara_task = asyncio.to_thread(yara_scan, processed_file, file_extension)
 
-            # Wait for both tasks to complete
             clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
             clamav_status, clamav_details, clamav_error = clamav_result
+            if clamav_status != 0 or yara_result != "OK":
+                raise HTTPException(status_code=700, detail="Malware scan failed")
 
-            # Handle ClamAV scan results
-            if clamav_status == 0:
-                clamav_response = {"status": "PASSED"}
-            elif clamav_status == 1:
-                if loglevel == "Debug":
-                    clamav_response = {"status": "FAILED", "logs": clamav_details}
-                else:
-                    clamav_response = {"status": "FAILED"}
-            else:
-                clamav_response = {"status": "FAILED", "details": clamav_error}
-
-            # Handle YARA scan results
-            if yara_result == "OK":
-                yara_response = {"status": "PASSED"}
-            else:
-                if loglevel == "Debug":
-                    if yara_result == False:
-                        yara_logs = "YARA failed to scan file"
-                    else:
-                        yara_logs = f"Suspicious {', '.join([match.rule for match in yara_result])} found in file"
-                else:
-                    yara_logs = None
-
-                yara_response = {"status": "FAILED", "logs": yara_logs}
-
-            # Set malware scan results in response data
-            response_data["malware_scan"] = {
-                "clamav": clamav_response,
-                "yara": yara_response,
-            }
-            if (
-                response_data["malware_scan"]["yara"]["status"] != "PASSED"
-                or response_data["malware_scan"]["clamav"]["status"] != "PASSED"
-            ):
-                return response_data
-
-        # Perform sanitization and validation if enabled
-        if scope_validation_sanitization:
+        if scope_validation:
             try:
-                sanitized_file = await sanitize_file_content(file, allowed_filetypes)
-                response_data = {
-                    "validation_result": "PASSED",
-                    "sanitize_result": "PASSED",
-                }
-            except HTTPException as e:
-                # Check if the raised exception matches the expected HTTPException
-                if e.status_code == status.HTTP_400_BAD_REQUEST and (
-                    "MIME type mismatch" in e.detail
-                    or "File type not allowed" in e.detail
-                ):
-                    logs("error", f"Caught expected HTTPException: {e.detail}")
-                    response_data["validation_result"] = "FAILED"
-                    return response_data
-                elif (
-                    e.status_code == status.HTTP_400_BAD_REQUEST
-                    and "Image sanitization error" in e.detail
-                ):
-                    logs("error", f"Caught expected HTTPException: {e.detail}")
-                    response_data["sanitize_result"] = "FAILED"
-                    return response_data
-                else:
-                    logs("error", f"Unexpected HTTPException: {e.detail}")
-                    raise e  # Re-raise any other HTTPException
+                actual_file_type = get_mime_type(file.file)
+                validate_file(
+                    file_extension,
+                    actual_file_type,
+                    allowed_filetypes=allowed_filetypes,
+                )
+            except HTTPException:
+                raise HTTPException(status_code=700, detail="Validation Failed")
 
-        if return_file:
-            file_to_be_processed = file_bytes
-            # perform image processessing if enabled
-            if scope_image_preprocessing:
-                if scope_validation_sanitization:
-                    file_to_be_processed = sanitized_file
-                processed_image = image_processing(file_to_be_processed)
-            # Perform ocr if enabled
-            if scope_optical_character_recognition:
-                if scope_image_preprocessing and processed_image is not False:
-                    file_to_be_processed = processed_image
-                else:
-                    if (
-                        scope_validation_sanitization
-                        and not scope_image_preprocessing
-                        or scope_validation_sanitization
-                        and scope_image_preprocessing
-                        and not processed_image
-                    ):
-                        file_to_be_processed = sanitized_file
-                ocr_file = await process_OCR(
-                    file_name=file_name,
-                    file_extension=file_extension,
-                    file_bytes=file_to_be_processed,
-                )
-                return FileResponse(
-                    ocr_file,
-                    media_type=file.content_type,
-                    filename=f"processed_{file_name}",
-                )
-            # perform renaming if enabled
-            if scope_renaming:
-                new_file_path = file_rename(file_bytes, file_name)
-                return FileResponse(
-                    path=new_file_path, filename=os.path.basename(new_file_path)
-                )
-            if scope_named_entity_recognition:
-                named_entity_recogniztion()
-            if scope_optimization:
-                scope_opt()
-        return response_data
+        if scope_sanitization:
+            try:
+                processed_file = await sanitize_file_content(file_bytes, file_extension)
+            except HTTPException:
+                raise HTTPException(status_code=700, detail="Sanitization failed")
+
+        if scope_image_preprocessing:
+            processed_file = image_processing(processed_file)
+            is_ndarray = True
+
+        if scope_optical_character_recognition:
+            processed_file = await process_OCR(
+                file_name=file_name,
+                file_extension=file_extension,
+                file_bytes=None if is_ndarray else processed_file,
+                contrast_image=processed_file if is_ndarray else None,
+            )
+            is_ndarray = False
+            file_path = processed_file
+
+        if scope_named_entity_recognition:
+            processed_file = named_entity_recogniztion(processed_file)
+
+        if scope_optimization:
+            processed_file = scope_opt(processed_file, file_extension, file_name)
+
+        if scope_renaming:
+            processed_file = file_rename(processed_file, file_name, is_ndarray)
+
+        # Determine the appropriate argument for FileResponse
+        if file_path:
+            response_arg = file_path
+        elif isinstance(processed_file, np.ndarray):
+            # Convert numpy array to bytes
+            _, buffer = cv2.imencode(".png", processed_file)
+            tmp_file_path = create_tmp_file(buffer.tobytes(), f"processed_{file_name}")
+            response_arg = tmp_file_path
+        else:
+            # For byte content
+            tmp_file_path = create_tmp_file(processed_file, f"processed_{file_name}")
+            response_arg = tmp_file_path
+
+        # Return the processed file
+        return FileResponse(
+            response_arg,
+            media_type=file.content_type,
+            filename=f"processed_{file_name}",
+        )
 
     except HTTPException as http_exception:
         logs("error", f"HTTP exception occurred for this file: {http_exception.detail}")
@@ -221,6 +182,6 @@ async def process_file_public(
     except Exception as e:
         logs("critical", f"An unexpected error occurred: {str(e)}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail="An internal server error occurred. Please try again later.",
         )
