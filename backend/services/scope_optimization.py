@@ -19,22 +19,26 @@ def scope_opt(input_data, file_extension, file_name, quality=50, max_size=(800, 
     :param max_size: maximum dimensions for the image
     :return: temporary path of the processed file
     """
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        if isinstance(input_data, np.ndarray):
-            # Input is a numpy array (image)
-            return process_image(
-                Image.fromarray(input_data), tmp_dir, quality, max_size
-            )
+    tmp_dir = tempfile.mkdtemp()
+    if isinstance(input_data, np.ndarray):
+        # Input is a numpy array (image)
+        return process_image(Image.fromarray(input_data), tmp_dir, quality, max_size)
+    elif isinstance(input_data, str) and os.path.isfile(input_data):
+        if file_extension == "pdf":
+            return process_pdf(input_data, tmp_dir, quality, max_size)
         else:
-            # Input is file bytes
-            if file_extension == ".pdf":
-                # Process PDF
-                tmp_pdf_path = create_tmp_file(input_data, file_name)
-                return process_pdf(tmp_pdf_path, tmp_dir, quality, max_size)
-            else:
-                # Process image
-                image = Image.open(io.BytesIO(input_data))
-                return process_image(image, tmp_dir, quality, max_size)
+            image = Image.open(input_data)
+            return process_image(image, tmp_dir, quality, max_size)
+    else:
+        # Input is file bytes
+        if file_extension == "pdf":
+            # Process PDF
+            tmp_pdf_path = create_tmp_file(input_data, file_name)
+            return process_pdf(tmp_pdf_path, tmp_dir, quality, max_size)
+        else:
+            # Process image
+            image = Image.open(io.BytesIO(input_data))
+            return process_image(image, tmp_dir, quality, max_size)
 
 
 def process_image(image, tmp_dir, quality, max_size):

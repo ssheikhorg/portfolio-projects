@@ -131,12 +131,12 @@ async def process_OCR(
     if file_bytes:
         if file_extension.lower() == "pdf":
             # Process PDF
-            with tempfile.TemporaryDirectory() as tmp_dir:
-                tmp_pdf_path = create_tmp_file(file_bytes, file_name)
-                result = ocr_agent.ocr(tmp_pdf_path, cls=True)
-                logs("info", f"OCR result for PDF: {result}")
-                ocr_file_path = save_pdf_ocr(result, tmp_pdf_path, tmp_dir)
-                return ocr_file_path
+            tmp_pdf_path = create_tmp_file(file_bytes, file_name)
+            result = ocr_agent.ocr(tmp_pdf_path, cls=True)
+            logs("info", f"OCR result for PDF: {result}")
+            tmp_dir = tempfile.mkdtemp()
+            ocr_file_path = save_pdf_ocr(result, tmp_pdf_path, tmp_dir)
+            return ocr_file_path
         else:
             tmp_img_path = create_tmp_file(file_bytes, file_name)
             result = ocr_agent.ocr(tmp_img_path, cls=True)

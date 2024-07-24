@@ -12,7 +12,6 @@ def file_rename(file_data, file_name: str, is_ndarray: bool):
 
     if isinstance(file_data, str) and os.path.isfile(file_data):
         # If file_data is a file path
-        file_extension = os.path.splitext(file_data)[1]
         new_file_path = os.path.join(os.path.dirname(file_data), new_filename)
         os.rename(file_data, new_file_path)
         return new_file_path

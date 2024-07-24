@@ -5,6 +5,6 @@ fetched_rule_dir: "/ziv/shared/packages"
 
 yara_repositories:
   - name: "Project"
-    url: "https://github.com/Yara-Rules/rules"
-    author: "yara"
+    url: "https://github.com/Neo23x0/signature-base"
+    author: "Neo23X0"
     branch: "master"

@@ -133,4 +133,4 @@ def image_processing(file_bytes: bytes):
 
         return contrast_image
     else:
-        return False, None, None
+        return file_bytes

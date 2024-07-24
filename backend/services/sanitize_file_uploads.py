@@ -94,5 +94,5 @@ async def sanitize_file_content(file: bytes, file_extension: str):
     else:
         sanitized_file = await sanitize_image(file)  # Use clean_file here
 
-    logs("info", f"File sanitization successful for: {file.filename}")
+    logs("info", f"File sanitization successful.")
     return sanitized_file

@@ -135,7 +135,8 @@ async def process_file_public(
 
         if scope_image_preprocessing:
             processed_file = image_processing(processed_file)
-            is_ndarray = True
+            if isinstance(processed_file, np.ndarray):
+                is_ndarray = True
 
         if scope_optical_character_recognition:
             processed_file = await process_OCR(
@@ -148,13 +149,15 @@ async def process_file_public(
             file_path = processed_file
 
         if scope_named_entity_recognition:
-            processed_file = named_entity_recogniztion(processed_file)
+            named_entity_recogniztion()
 
         if scope_optimization:
             processed_file = scope_opt(processed_file, file_extension, file_name)
+            file_path = processed_file
 
         if scope_renaming:
             processed_file = file_rename(processed_file, file_name, is_ndarray)
+            file_path = processed_file
 
         # Determine the appropriate argument for FileResponse
         if file_path:
@@ -170,11 +173,18 @@ async def process_file_public(
             response_arg = tmp_file_path
 
         # Return the processed file
-        return FileResponse(
-            response_arg,
-            media_type=file.content_type,
-            filename=f"processed_{file_name}",
-        )
+        if scope_renaming:
+            return FileResponse(
+                response_arg,
+                media_type=file.content_type,
+                filename=os.path.basename(file_path),
+            )
+        else:
+            return FileResponse(
+                response_arg,
+                media_type=file.content_type,
+                filename=f"processed_{file_name}",
+            )
 
     except HTTPException as http_exception:
         logs("error", f"HTTP exception occurred for this file: {http_exception.detail}")
