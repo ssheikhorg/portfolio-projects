@@ -144,6 +144,7 @@ async def process_file_public(
                 file_extension=file_extension,
                 file_bytes=None if is_ndarray else processed_file,
                 contrast_image=processed_file if is_ndarray else None,
+                draw_debug=loglevel == "Debug",
             )
             is_ndarray = False
             file_path = processed_file

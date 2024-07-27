@@ -1,99 +1,172 @@
 import os
 import tempfile
+from io import BytesIO
 from typing import Optional
 
 import cv2
 import fitz
 import numpy as np
 from fastapi import HTTPException, status
-from paddleocr import PaddleOCR, draw_ocr
+from paddleocr import PaddleOCR
 from PIL import Image
+from reportlab.lib.colors import black, red
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
 from utils.log_function import logs
 from utils.miscellaneous import create_tmp_file
 
+pdfmetrics.registerFont(TTFont("GermanFont", "/app/static/fonts/german.ttf"))
 
-def save_pdf_ocr(result, pdf_path, tmp_dir: str) -> str:
+
+def process_ocr_result(c, result, width, height, draw_debug=True):
+    for line in result:
+        box = np.array(line[0]).astype(np.int64).reshape([-1, 1, 2])
+        text, score = line[1]
+        x1, y1 = box[0][0]
+        x2, y2 = box[2][0]
+        box_width = x2 - x1
+        box_height = y2 - y1
+        font_size = 0.8 * box_height
+        c.setFont("GermanFont", font_size)
+        text_width = c.stringWidth(text, "GermanFont", font_size)
+        if text_width > box_width:
+            font_size *= box_width / text_width
+            c.setFont("GermanFont", font_size)
+
+        text_x = x1 + (box_width - c.stringWidth(text, "GermanFont", font_size)) / 2
+        text_y = height - y2 + (box_height - font_size) / 2
+
+        if draw_debug:
+            c.setStrokeColor(red)
+            c.rect(x1, height - y2, box_width, box_height, fill=0, stroke=1)
+            c.setFillColor(black)
+            c.drawString(text_x, text_y, text)
+        else:
+            c.setFillColorRGB(1, 1, 1, 0)  # Invisible text
+            c.drawString(text_x, text_y, text)
+
+
+def save_pdf_ocr(result, pdf_path, tmp_dir: str, draw_debug=True) -> str:
     logs(
         "info",
         f"Starting OCR save process for PDF: {pdf_path} in temporary directory: {tmp_dir}",
     )
-    # Extract images from PDF, map OCR results, and save them as new images
-    imgs = []
+    output_pdf = BytesIO()
+    c = canvas.Canvas(output_pdf)
     with fitz.open(pdf_path) as pdf:
-        for pg in range(len(pdf)):
+        for pg, page_result in enumerate(result):
             page = pdf[pg]
             mat = fitz.Matrix(2, 2)
             pm = page.get_pixmap(matrix=mat, alpha=False)
             if pm.width > 2000 or pm.height > 2000:
                 pm = page.get_pixmap(matrix=fitz.Matrix(1, 1), alpha=False)
             img = Image.frombytes("RGB", [pm.width, pm.height], pm.samples)
-            img = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-            imgs.append(img)
-    logs("info", f"Extracted {len(imgs)} images from PDF.")
-
-    # Map OCR results to images and save each image
-    for idx in range(len(result)):
-        res = result[idx]
-        if res is None:
-            continue
-        image = imgs[idx]
-        boxes = [line[0] for line in res]
-        txts = [line[1][0] for line in res]
-        scores = [line[1][1] for line in res]
-        im_show = draw_ocr(
-            image, boxes, txts, scores, font_path="/app/static/fonts/german.ttf"
-        )
-        im_show = Image.fromarray(im_show)
-        image_path = os.path.join(tmp_dir, f"result_page_{idx}.jpg")
-        im_show.save(image_path)
-        logs("info", f"Saved OCR image {image_path}")
-
-    # Convert modified images back into a single PDF
-    image_paths = [
-        os.path.join(tmp_dir, f"result_page_{i}.jpg") for i in range(len(result))
-    ]
-    logs("info", f"Image paths for final PDF: {image_paths}")
-    images = [Image.open(img_path).convert("RGB") for img_path in image_paths]
+            img_array = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
+            height, width = img_array.shape[:2]
+            c.setPageSize((width, height))
+            pil_img = Image.fromarray(cv2.cvtColor(img_array, cv2.COLOR_BGR2RGB))
+            c.drawInlineImage(pil_img, 0, 0, width=width, height=height)
+            if page_result is not None:
+                process_ocr_result(c, page_result, width, height, draw_debug)
+            c.showPage()
+    c.save()
+    output_pdf.seek(0)
     final_pdf_path = os.path.join(tmp_dir, "result.pdf")
-    images[0].save(final_pdf_path, save_all=True, append_images=images[1:])
+    with open(final_pdf_path, "wb") as f:
+        f.write(output_pdf.getvalue())
     logs("info", f"Final OCR PDF saved at: {final_pdf_path}")
     return final_pdf_path
 
 
-def save_image_ocr(result, npimage):
-    logs("info", "Starting OCR save process for image.")
-    result = result[0]
-    image = Image.fromarray(cv2.cvtColor(npimage, cv2.COLOR_BGR2RGB))
-    boxes = [line[0] for line in result]
-    txts = [line[1][0] for line in result]
-    scores = [line[1][1] for line in result]
-    im_show = draw_ocr(
-        image, boxes, txts, scores, font_path="/app/static/fonts/german.ttf"
-    )
-    im_show = Image.fromarray(im_show)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
-        im_show.save(tmp_file, format="JPEG")
-        temp_file_path = tmp_file.name
-    logs("info", f"Saved OCR image at: {temp_file_path}")
-    return temp_file_path
+def pdf_to_image(pdf_bytes):
+    with fitz.open(stream=pdf_bytes, filetype="pdf") as doc:
+        page = doc.load_page(0)
+        pix = page.get_pixmap()
+        img_data = pix.tobytes("png")
+    return Image.open(BytesIO(img_data))
 
 
-def save_unprocessed_image_ocr(result, img_path):
-    logs("info", f"Starting OCR save process for unprocessed image: {img_path}")
-    result = result[0]
-    image = Image.open(img_path).convert("RGB")
-    boxes = [line[0] for line in result]
-    txts = [line[1][0] for line in result]
-    scores = [line[1][1] for line in result]
-    im_show = draw_ocr(
-        image, boxes, txts, scores, font_path="/app/static/fonts/german.ttf"
-    )
-    im_show = Image.fromarray(im_show)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_file:
-        im_show.save(tmp_file, format="JPEG")
-        temp_file_path = tmp_file.name
-    logs("info", f"Saved OCR image at: {temp_file_path}")
-    return temp_file_path
+def process_image_with_ocr(image, result, draw_debug=True):
+    width, height = image.size
+
+    # Create a PDF canvas
+    pdf_buffer = BytesIO()
+    c = canvas.Canvas(pdf_buffer, pagesize=(width, height))
+
+    # Draw the original image
+    c.drawImage(ImageReader(image), 0, 0, width=width, height=height)
+
+    for line in result[0]:
+        box = np.array(line[0]).astype(np.int64).reshape([-1, 1, 2])
+        text, score = line[1]
+
+        # Ensure box coordinates are in the correct order
+        x1, y1 = np.min(box, axis=0)[0]
+        x2, y2 = np.max(box, axis=0)[0]
+
+        # Calculate box dimensions
+        box_width = x2 - x1
+        box_height = y2 - y1
+
+        # Determine font size
+        font_size = int(min(box_height * 0.8, box_width / (len(text) * 0.6)))
+        font_size = max(10, font_size)  # Ensure minimum font size of 10
+
+        # Set font
+        c.setFont("GermanFont", font_size)
+
+        if draw_debug:
+            # Draw bounding box
+            c.setStrokeColorRGB(1, 0, 0)  # Red color
+            c.rect(x1, height - y2, box_width, box_height, fill=0, stroke=1)
+            # Draw visible text
+            c.setFillColorRGB(0, 0, 0)  # Black color
+            c.drawString(x1, height - y1 - font_size, text)
+        else:
+            # Draw invisible text
+            c.setFillColorRGB(1, 1, 1, 0)  # White color with 0 alpha (invisible)
+            c.drawString(x1, height - y1 - font_size, text)
+
+    c.save()
+
+    # Convert PDF to image
+    pdf_bytes = pdf_buffer.getvalue()
+    result_image = pdf_to_image(pdf_bytes)
+
+    return result_image
+
+
+def save_unprocessed_image_ocr(result, tmp_file_path, draw_debug=True):
+    logs("info", f"Starting OCR save process for unprocessed image: {tmp_file_path}")
+
+    # Open the image
+    with Image.open(tmp_file_path) as image:
+        original_format = image.format
+        result_image = process_image_with_ocr(image, result, draw_debug)
+
+    # Save the result image in the original format
+    result_image.save(tmp_file_path, format=original_format)
+
+    logs("info", f"Processed image with OCR results saved at: {tmp_file_path}")
+    return tmp_file_path
+
+
+def save_image_ocr(result, contrast_image: np.ndarray, draw_debug=True):
+    logs("info", "Starting OCR save process for contrast image")
+
+    # Convert numpy array to PIL Image
+    image = Image.fromarray(cv2.cvtColor(contrast_image, cv2.COLOR_BGR2RGB))
+    result_image = process_image_with_ocr(image, result, draw_debug)
+
+    # Save the result image to a temporary file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_file:
+        result_image.save(tmp_file, format="PNG")
+        tmp_file_path = tmp_file.name
+
+    logs("info", f"Processed contrast image with OCR results saved at: {tmp_file_path}")
+    return tmp_file_path
 
 
 async def process_OCR(
@@ -101,6 +174,7 @@ async def process_OCR(
     file_extension: str,
     file_bytes: Optional[bytes] = None,
     contrast_image: Optional[np.ndarray] = None,
+    draw_debug: Optional[bool] = False,
 ):
     logs(
         "info", f"Processing OCR for file: {file_name} with extension: {file_extension}"
@@ -129,26 +203,27 @@ async def process_OCR(
     )
 
     if file_bytes:
+        tmp_file_path = create_tmp_file(file_bytes, file_name)
         if file_extension.lower() == "pdf":
             # Process PDF
-            tmp_pdf_path = create_tmp_file(file_bytes, file_name)
-            result = ocr_agent.ocr(tmp_pdf_path, cls=True)
+            result = ocr_agent.ocr(tmp_file_path, cls=True)
             logs("info", f"OCR result for PDF: {result}")
             tmp_dir = tempfile.mkdtemp()
-            ocr_file_path = save_pdf_ocr(result, tmp_pdf_path, tmp_dir)
+            ocr_file_path = save_pdf_ocr(result, tmp_file_path, tmp_dir, draw_debug)
             return ocr_file_path
         else:
-            tmp_img_path = create_tmp_file(file_bytes, file_name)
-            result = ocr_agent.ocr(tmp_img_path, cls=True)
+            result = ocr_agent.ocr(tmp_file_path, cls=True)
             logs("info", f"OCR result for image: {result}")
-            ocr_file_path = save_unprocessed_image_ocr(result, tmp_img_path)
+            ocr_file_path = save_unprocessed_image_ocr(
+                result, tmp_file_path, draw_debug
+            )
             return ocr_file_path
     else:
         if contrast_image is not None:
             # Process image
             result = ocr_agent.ocr(contrast_image, cls=True)
             logs("info", f"OCR result for contrast image: {result}")
-            ocr_file_path = save_image_ocr(result, contrast_image)
+            ocr_file_path = save_image_ocr(result, contrast_image, draw_debug)
             return ocr_file_path
         else:
             logs("error", "No contrast image provided for image processing")
