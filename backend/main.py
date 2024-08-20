@@ -42,11 +42,6 @@ async def http_exception_handler(request, exc):
     return JSONResponse({"message": message}, status_code=exc.status_code)
 
 
-@app.get("/", name="docs")
-def main():
-    return RedirectResponse(url="/docs/")
-
-
 file_service_router = APIRouter(prefix="/file_service")
 file_service_router.include_router(process_file_router)
 file_service_router.include_router(issue_token_router)
