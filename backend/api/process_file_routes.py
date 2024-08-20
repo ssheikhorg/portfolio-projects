@@ -43,7 +43,7 @@ async def process_file_public(
     ),
     allowed_filetypes: Optional[str] = Query(
         None,
-        description="Allowed file types (comma-separated, e.g.,pdf,jpeg,jfif,png)",
+        description="Allowed file types (comma-separated, e.g. pdf,jpeg,jfif,png)",
     ),
     # file_category: FileCategory = Query(..., description="Select file category"),
     scope_image_preprocessing: bool = Query(
@@ -74,7 +74,7 @@ async def process_file_public(
         max_filesize (float): Maximum allowed filesize in MB.
         scope_malware_scan (bool): Perform malware scan.
         scope_validation_sanitization (bool): Perform validation and sanitization.
-        allowed_filetypes (str): Allowed file types (comma-separated, e.g., pdf,jpeg,jfif,png).
+        allowed_filetypes (str): Allowed file types (comma-separated, e.g. pdf,jpeg,jfif,png).
         file_category (str): File category (e.g., invoice, payment reminder, other).
         scope_image_preprocessing (bool): Perform image preprocessing.
         scope_optical_character_recognition (bool): Perform optical character recognition.
