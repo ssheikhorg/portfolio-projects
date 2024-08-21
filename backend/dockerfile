@@ -1,6 +1,6 @@
 FROM python:3.9-slim-buster
 
-RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1 cron git poppler-utils
+RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1 cron git poppler-utils libmupdf-dev net-tools 
 
 
 # Download and install YARA
@@ -16,7 +16,7 @@ RUN wget https://github.com/VirusTotal/yara/archive/refs/tags/v4.4.0.tar.gz -O y
 
 # Install ClamAV client
 RUN apt-get update && \
-    apt-get install -y clamdscan && \
+    apt-get install -y clamdscan clamav-daemon && \
     rm -rf /var/lib/apt/lists/*
 
 # RUN chown -R 100:101 /run/clamav
