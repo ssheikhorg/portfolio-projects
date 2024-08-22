@@ -19,7 +19,7 @@ from services.scan_file import clamav_scan, yara_scan
 from services.scope_optimization import scope_opt
 from services.validate_file import validate_file
 from utils.authentication_header import validate_token
-from utils.log_function import logs, setup_logging
+from utils.log_function import logs, set_log_level
 from utils.miscellaneous import create_tmp_file, get_mime_type
 
 router = APIRouter()
@@ -45,7 +45,9 @@ async def process_file_public(
         None,
         description="Allowed file types (comma-separated, e.g. pdf,jpeg,jfif,png)",
     ),
-    # file_category: FileCategory = Query(..., description="Select file category"),
+    file_category: FileCategory = Query(
+        FileCategory.Unspecified.value, description="Select file category"
+    ),
     scope_image_preprocessing: bool = Query(
         False, description="Perform image preprocessing (True/False)"
     ),
@@ -86,7 +88,7 @@ async def process_file_public(
         return_file (bool): Return the processed file.
     """
 
-    setup_logging(loglevel)  # Set up logging based on the specified log level
+    set_log_level(loglevel)  # Set up logging based on the specified log level
 
     try:
         file_bytes = await file.read()

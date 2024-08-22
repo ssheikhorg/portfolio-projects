@@ -35,7 +35,7 @@ class MalwareScanResult(BaseModel):
 class FileCategory(str, Enum):
     Invoice = "Invoice"
     PaymentReminder = "PaymentReminder"
-    Other = "Other"
+    Unspecified = "Unspecified"
 
 
 class AuthSchema(BaseModel):

@@ -11,7 +11,7 @@ import sys
 import yaml
 
 sys.path.append("/app")
-from utils.log_function import logs, setup_logging
+from utils.log_function import logs, set_log_level
 from utils.yara_forgerules import rule_output, run_collector, yara_compile
 
 if __name__ == "__main__":
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     # Setup logging based on command line argument or default
     loglevel = "Debug" if args.debug else "Info"
-    setup_logging(loglevel)
+    set_log_level(loglevel)
 
     # Log script version and config file
     logs("Info", f"Running script version {__version__}")

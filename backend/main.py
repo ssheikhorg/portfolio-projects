@@ -4,8 +4,11 @@ from api.process_file_routes import router as process_file_router
 from config import settings
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from utils.log_function import setup_logging
+
+setup_logging()
 
 app = FastAPI(
     title=settings.project_name,
