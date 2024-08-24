@@ -7,7 +7,7 @@ services:
       dockerfile: dockerfile
     command: "./scripts/dev_start.sh"
     ports:
-      - "8000:8000"
+      - "3888:8000"
     volumes:
       - ./backend:/app
       - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
@@ -21,7 +21,8 @@ services:
       - clamav_network
 
   clamav:
-    image: "clamav/clamav:stable"
+    image: "file-upload-app"
+    platform: linux/arm64
     volumes:
       - clam_db:/var/lib/clamav
       - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
@@ -31,7 +32,7 @@ services:
       - ./backend/clamav.env
     networks:
       - clamav_network
-    command: bash -c "chown -R clamav:clamav /run/clamav && clamd"
+    command: bash -c "chown -R clamav:clamav /var/lib/clamav /run/clamav && freshclam && exec clamd --foreground --config-file=/etc/clamav/clamd.conf"
 
 volumes:
   clam_db:
