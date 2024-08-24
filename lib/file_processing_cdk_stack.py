@@ -25,30 +25,31 @@ class FileProcessingCdkStack(Stack):
         lambda_role = iam.Role(self, "LambdaExecutionRole",
                                assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
                                managed_policies=[
-                                   iam.ManagedPolicy.from_aws_managed_policy_name("service-role/AWSLambdaBasicExecutionRole"),
+                                   iam.ManagedPolicy.from_aws_managed_policy_name(
+                                       "service-role/AWSLambdaBasicExecutionRole"),
                                ])
 
         # Lambda Functions using Python 3.12
         validate_function = lambda_python.PythonFunction(self, "ValidateFileFunction",
-                                             runtime=lambda_.Runtime.PYTHON_3_12,
-                                             entry="lambda/validate",  # Directory with validate.py
-                                             index="validate.py",
-                                             handler="handler",
-                                             role=lambda_role)
+                                                         runtime=lambda_.Runtime.PYTHON_3_12,
+                                                         entry="lambda/validate",  # Directory with validate.py
+                                                         index="validate.py",
+                                                         handler="handler",
+                                                         role=lambda_role)
 
         process_function = lambda_python.PythonFunction(self, "ProcessFileFunction",
-                                            runtime=lambda_.Runtime.PYTHON_3_12,
-                                            entry="lambda/process",  # Directory with process.py
-                                            index="process.py",
-                                            handler="handler",
-                                            role=lambda_role)
+                                                        runtime=lambda_.Runtime.PYTHON_3_12,
+                                                        entry="lambda/process",  # Directory with process.py
+                                                        index="process.py",
+                                                        handler="handler",
+                                                        role=lambda_role)
 
         email_function = lambda_python.PythonFunction(self, "SendEmailFunction",
-                                          runtime=lambda_.Runtime.PYTHON_3_12,
-                                          entry="lambda/send_email",  # Directory with send_email.py
-                                          index="send_email.py",
-                                          handler="handler",
-                                          role=lambda_role)
+                                                      runtime=lambda_.Runtime.PYTHON_3_12,
+                                                      entry="lambda/send_email",  # Directory with send_email.py
+                                                      index="send_email.py",
+                                                      handler="handler",
+                                                      role=lambda_role)
 
         # Step Functions Tasks
         validate_task = tasks.LambdaInvoke(self, "Validate File",
