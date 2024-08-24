@@ -1,14 +1,15 @@
 import asyncio
 import os
 import traceback
-from typing import Optional
+from typing import List, Optional
 
 import cv2
 import numpy as np
 from config import settings
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from fastapi.responses import FileResponse
-from schema.data_schema import AuthSchema, FileCategory
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+from schema.data_schema import AuthSchema, FileCategory, ProcessFileResponse
 from services.filenaming import file_rename
 from services.filesize_check import check_filesize
 from services.named_entity_recognition import named_entity_recogniztion
@@ -24,8 +25,19 @@ from utils.miscellaneous import create_tmp_file, get_mime_type
 
 router = APIRouter()
 
+LOG_LEVELS = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3, "CRITICAL": 4}
 
-@router.put("/processFile", response_class=FileResponse)
+
+@router.put(
+    "/processFile",
+    responses={
+        200: {"description": "Successful response"},
+        700: {
+            "description": "Custom error",
+            "content": {"application/json": {"example": {"detail": "Error message"}}},
+        },
+    },
+)
 async def process_file_public(
     auth_user: AuthSchema = Depends(validate_token),
     scope_filesize_check: bool = Query(
@@ -42,8 +54,7 @@ async def process_file_public(
         False, description="perform sanitization(True/False)"
     ),
     allowed_filetypes: Optional[str] = Query(
-        None,
-        description="Allowed file types (comma-separated, e.g. pdf,jpeg,jfif,png)",
+        None, description="Allowed file types (comma-separated, e.g. pdf,jpeg,jfif,png)"
     ),
     file_category: FileCategory = Query(
         FileCategory.Unspecified.value, description="Select file category"
@@ -67,36 +78,30 @@ async def process_file_public(
     loglevel: Optional[str] = Query(
         "Info", description="Logging level (Debug, Info, Warning, Error, Critical)"
     ),
+    return_file: bool = Query(
+        True, description="Return the processed file (True) or JSON response (False)"
+    ),
 ):
-    """
-    Processes an uploaded file based on the specified parameters.
-    *If pdf is sent for ocr processing make sure not to send large pdf sizes
-    Args:
-        scope_filesize_check (bool): Confirm filesize check.
-        max_filesize (float): Maximum allowed filesize in MB.
-        scope_malware_scan (bool): Perform malware scan.
-        scope_validation_sanitization (bool): Perform validation and sanitization.
-        allowed_filetypes (str): Allowed file types (comma-separated, e.g. pdf,jpeg,jfif,png).
-        file_category (str): File category (e.g., invoice, payment reminder, other).
-        scope_image_preprocessing (bool): Perform image preprocessing.
-        scope_optical_character_recognition (bool): Perform optical character recognition.
-        scope_named_entity_recognition (bool): Perform named entity recognition.
-        scope_optimization (bool): Perform file optimization.
-        scope_renaming (bool): Perform file renaming.
-        file (UploadFile): File to be processed.
-        loglevel (str): Logging level.
-        return_file (bool): Return the processed file.
-    """
+    log_messages = []
 
-    set_log_level(loglevel)  # Set up logging based on the specified log level
+    loglevel = loglevel.upper()
+    current_log_level = LOG_LEVELS.get(loglevel, 1)
+
+    def log_collector(level, message):
+        log_level = LOG_LEVELS.get(level.upper(), 0)
+        if log_level == current_log_level:
+            log_messages.append(f"{level.upper()}: {message}")
+        logs(level, message)
+
+    set_log_level(loglevel)
 
     try:
         file_bytes = await file.read()
         file_name = file.filename
         file_extension = file.filename.split(".")[-1].lower()
 
-        logs("info", f"Processing file: {file_name}")
-        logs(
+        log_collector("info", f"Processing file: {file_name}")
+        log_collector(
             "debug",
             f"File details - Name: {file_name}, Extension: {file_extension}, Size: {len(file_bytes)} bytes",
         )
@@ -110,85 +115,85 @@ async def process_file_public(
                 max_file_size * 1048576 if max_file_size else settings.max_file_size
             )
             check_filesize(processed_file, allowed_max_value)
-            logs("info", "File size check passed")
-            logs(
+            log_collector("info", "File size check passed")
+            log_collector(
                 "debug",
                 f"File size: {len(processed_file)} bytes, Max allowed: {allowed_max_value} bytes",
             )
 
         if scope_malware_scan:
-            logs("debug", "Starting malware scan")
+            log_collector("debug", "Starting malware scan")
             clamav_task = asyncio.to_thread(clamav_scan, processed_file, file_extension)
             yara_task = asyncio.to_thread(yara_scan, processed_file, file_extension)
 
             clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
             clamav_status, clamav_details, clamav_error = clamav_result
-            logs("info", "Malware scan completed")
-            logs(
+            log_collector("info", "Malware scan completed")
+            log_collector(
                 "debug",
                 f"ClamAV result - Status: {clamav_status}, Details: {clamav_details}, Error: {clamav_error}",
             )
-            logs("debug", f"YARA result: {yara_result}")
+            log_collector("debug", f"YARA result: {yara_result}")
 
         if scope_validation:
-            logs("debug", "Starting file validation")
+            log_collector("debug", "Starting file validation")
             actual_file_type = get_mime_type(file.file)
             validate_file(
                 file_extension, actual_file_type, allowed_filetypes=allowed_filetypes
             )
-            logs("info", "File validation passed")
-            logs("debug", f"Actual file type: {actual_file_type}")
+            log_collector("info", "File validation passed")
+            log_collector("debug", f"Actual file type: {actual_file_type}")
 
         if scope_sanitization:
-            logs("debug", "Starting file sanitization")
+            log_collector("debug", "Starting file sanitization")
             processed_file = await sanitize_file_content(file_bytes, file_extension)
-            logs("info", "File sanitization completed")
-            logs("debug", f"Sanitized file size: {len(processed_file)} bytes")
+            log_collector("info", "File sanitization completed")
+            log_collector("debug", f"Sanitized file size: {len(processed_file)} bytes")
 
         if scope_image_preprocessing:
-            logs("debug", "Starting image preprocessing")
+            log_collector("debug", "Starting image preprocessing")
             processed_file = image_processing(processed_file)
             is_ndarray = isinstance(processed_file, np.ndarray)
-            logs("info", "Image preprocessing completed")
-            logs(
+            log_collector("info", "Image preprocessing completed")
+            log_collector(
                 "debug",
                 f"Preprocessed image type: {'numpy array' if is_ndarray else 'bytes'}",
             )
 
         if scope_optical_character_recognition:
-            logs("debug", "Starting OCR processing")
+            log_collector("debug", "Starting OCR processing")
             processed_file = await process_OCR(
                 file_name=file_name,
                 file_extension=file_extension,
                 file_bytes=None if is_ndarray else processed_file,
                 contrast_image=processed_file if is_ndarray else None,
-                draw_debug=loglevel == "Debug",
+                draw_debug=loglevel == "DEBUG",
             )
             is_ndarray = False
             file_path = processed_file
-            logs("info", "OCR processing completed")
-            logs("debug", f"OCR result file path: {file_path}")
+            log_collector("info", "OCR processing completed")
+            log_collector("debug", f"OCR result file path: {file_path}")
 
         if scope_named_entity_recognition:
-            logs("debug", "Starting named entity recognition")
+            log_collector("debug", "Starting named entity recognition")
             named_entity_recogniztion()
-            logs("info", "Named entity recognition completed")
+            log_collector("info", "Named entity recognition completed")
 
         if scope_optimization:
-            logs("debug", "Starting file optimization")
+            log_collector("debug", "Starting file optimization")
             processed_file = scope_opt(processed_file, file_extension, file_name)
             file_path = processed_file
-            logs("info", "File optimization completed")
-            logs("debug", f"Optimized file path: {file_path}")
+            log_collector("info", "File optimization completed")
+            log_collector("debug", f"Optimized file path: {file_path}")
 
         if scope_renaming:
-            logs("debug", "Starting file renaming")
+            log_collector("debug", "Starting file renaming")
             processed_file = file_rename(processed_file, file_name, is_ndarray)
             file_path = processed_file
-            logs("info", "File renaming completed")
-            logs("debug", f"Renamed file path: {file_path}")
+            log_collector("info", "File renaming completed")
+            log_collector("debug", f"Renamed file path: {file_path}")
 
-        logs("debug", "Preparing file response")
+        log_collector("debug", "Preparing response")
         if file_path:
             response_arg = file_path
         elif isinstance(processed_file, np.ndarray):
@@ -199,33 +204,48 @@ async def process_file_public(
             tmp_file_path = create_tmp_file(processed_file, f"processed_{file_name}")
             response_arg = tmp_file_path
 
-        logs("info", "File processing completed successfully")
-        logs("debug", f"Final response file path: {response_arg}")
+        log_collector("info", "File processing completed successfully")
+        log_collector("debug", f"Final response file path: {response_arg}")
 
-        if scope_renaming:
-            return FileResponse(
-                response_arg,
-                media_type=file.content_type,
-                filename=os.path.basename(file_path),
-            )
+        if return_file:
+            if scope_renaming:
+                return FileResponse(
+                    response_arg,
+                    media_type=file.content_type,
+                    filename=os.path.basename(file_path),
+                )
+            else:
+                return FileResponse(
+                    response_arg,
+                    media_type=file.content_type,
+                    filename=f"processed_{file_name}",
+                )
         else:
-            return FileResponse(
-                response_arg,
-                media_type=file.content_type,
-                filename=f"processed_{file_name}",
+            return JSONResponse(
+                content=ProcessFileResponse(
+                    filename=os.path.basename(response_arg),
+                    file_size=os.path.getsize(response_arg),
+                    mime_type=file.content_type,
+                    logs=log_messages,
+                ).model_dump()
             )
 
     except HTTPException as http_exception:
-        logs("error", f"HTTP exception occurred: {http_exception.detail}")
-        logs("debug", f"HTTP exception status code: {http_exception.status_code}")
+        log_collector("error", f"HTTP exception occurred: {http_exception.detail}")
+        log_collector(
+            "debug", f"HTTP exception status code: {http_exception.status_code}"
+        )
+        if http_exception.status_code == 700:
+            return JSONResponse(
+                status_code=700, content={"detail": http_exception.detail}
+            )
         raise http_exception
     except Exception as e:
-        logs("critical", f"An unexpected error occurred: {str(e)}")
-        logs(
+        log_collector("critical", f"An unexpected error occurred: {str(e)}")
+        log_collector(
             "debug",
             f"Exception type: {type(e).__name__}, Traceback: {traceback.format_exc()}",
         )
         raise HTTPException(
-            status_code=500,
-            detail="An internal server error occurred. Please try again later.",
+            status_code=700, detail=f"An unexpected error occurred: {str(e)}"
         )

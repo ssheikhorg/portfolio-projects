@@ -14,7 +14,7 @@ def validate_mime_type(actual_mime_type: str, expected_mime_type: str):
             f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}",
         )
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=700,
             detail=f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}.",
         )
     logs("info", f"MIME type validated based on content: {actual_mime_type}")
@@ -38,7 +38,7 @@ def validate_file(
 
     if file_extension not in allowed_extensions:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=700,
             detail="File type not allowed",
         )
 

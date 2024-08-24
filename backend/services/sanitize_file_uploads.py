@@ -1,7 +1,7 @@
 from io import BytesIO
 
 import magic
-from fastapi import File, HTTPException, UploadFile, status
+from fastapi import HTTPException, status
 from pikepdf import Pdf, PdfError
 from PIL import Image
 from utils.log_function import logs
@@ -88,11 +88,18 @@ async def sanitize_file_content(file: bytes, file_extension: str):
     """
     executes the appropriate sanitization function.
     """
-    # Use clean_file here
-    if file_extension == "pdf":
-        sanitized_file = await sanitize_pdf(file)  # Use clean_file here
-    else:
-        sanitized_file = await sanitize_image(file)  # Use clean_file here
+    try:
+        # Use clean_file here
+        if file_extension == "pdf":
+            sanitized_file = await sanitize_pdf(file)  # Use clean_file here
+        else:
+            sanitized_file = await sanitize_image(file)  # Use clean_file here
 
-    logs("info", f"File sanitization successful.")
-    return sanitized_file
+        logs("info", f"File sanitization successful.")
+        return sanitized_file
+    except Exception as e:
+        logs("critical", f"File sanitization failed: {str(e)}")
+        raise HTTPException(
+            status_code=700,
+            detail=f"File sanitization error: {str(e)}",
+        )

@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from fastapi import HTTPException
 from utils.miscellaneous import is_image
 
 
@@ -117,20 +118,26 @@ def increase_contrast(image, clip_limit=2.0, tile_grid_size=(8, 8)):
 
 
 def image_processing(file_bytes: bytes):
-    image_flag = is_image(file_bytes)
-    if image_flag:
-        # Convert file contents to a numpy array and read the image
-        np_arr = np.frombuffer(file_bytes, np.uint8)
-        input_image = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
+    try:
+        image_flag = is_image(file_bytes)
+        if image_flag:
+            # Convert file contents to a numpy array and read the image
+            np_arr = np.frombuffer(file_bytes, np.uint8)
+            input_image = cv2.imdecode(np_arr, cv2.IMREAD_GRAYSCALE)
 
-        if input_image is None:
-            return False, None, None
-        # Enhance the brightness
-        bright_image = enhance_brightness(input_image, 1.3)
+            if input_image is None:
+                return False, None, None
+            # Enhance the brightness
+            bright_image = enhance_brightness(input_image, 1.3)
 
-        # Increase the contrast
-        contrast_image = increase_contrast(bright_image)
+            # Increase the contrast
+            contrast_image = increase_contrast(bright_image)
 
-        return contrast_image
-    else:
-        return file_bytes
+            return contrast_image
+        else:
+            return file_bytes
+    except Exception as e:
+        raise HTTPException(
+            status_code=700,
+            detail="Image processing failed",
+        )
