@@ -3,6 +3,7 @@ import boto3
 
 ses_client = boto3.client('ses')
 
+
 def handler(event, context):
     # Extract information from the event
     processing_result = event['processing_successful']
@@ -12,9 +13,9 @@ def handler(event, context):
 
     # Send email
     response = ses_client.send_email(
-        Source="your-email@example.com",
+        Source="shsheikhbd@gmail.com",
         Destination={
-            "ToAddresses": ["user@example.com"]
+            "ToAddresses": ["shsheikhbd@gmail.com"]
         },
         Message={
             "Subject": {
