@@ -1,13 +1,14 @@
 import json
 
+
 def handler(event, context):
-    # Example: Basic processing
-    processing_successful = True  # Implement actual processing logic
+    print("Process Event: ", event)
+    is_valid = event["body"]["valid"]
 
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "processing_successful": processing_successful,
-            "message": "File processed successfully" if processing_successful else "File processing failed"
+            "valid": is_valid,
+            "message": "File processed successfully"
         })
     }

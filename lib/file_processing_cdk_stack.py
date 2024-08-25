@@ -31,6 +31,7 @@ class FileProcessingCdkStack(Stack):
         # IAM Role for Lambda
         lambda_role = iam.Role(self, "LambdaExecutionRole",
                                assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
+                               role_name="FileProcessingLambdaRole",
                                managed_policies=[
                                    iam.ManagedPolicy.from_aws_managed_policy_name(
                                        "service-role/AWSLambdaBasicExecutionRole"),
@@ -67,31 +68,29 @@ class FileProcessingCdkStack(Stack):
 
         # Step Functions Tasks
         validate_task = tasks.LambdaInvoke(self, "Validate File",
-                                           lambda_function=validate_function,
-                                           output_path="$.Payload")
+                                           lambda_function=validate_function)
 
         process_task = tasks.LambdaInvoke(self, "Process File",
-                                          lambda_function=process_function,
-                                          output_path="$.Payload")
+                                          lambda_function=process_function)
 
         email_task = tasks.LambdaInvoke(self, "Send Email",
-                                        lambda_function=email_function,
-                                        output_path="$.Payload")
+                                        lambda_function=email_function)
 
         # Step Functions Definition
         definition = validate_task.next(
             sfn.Choice(self, "File Valid?")
-            .when(sfn.Condition.boolean_equals("$.valid", True), process_task.next(email_task))
+            .when(sfn.Condition.boolean_equals("$.body.valid", True), process_task.next(email_task))
             .otherwise(email_task)
         )
 
         # Step Function
-        sm = sfn.StateMachine(self, "FileProcessingStateMachine",
-                              definition=definition,
-                              timeout=Duration.minutes(5))
+        state_machine = sfn.StateMachine(self, "FileProcessingStateMachine",
+                                         definition=definition,
+                                         state_machine_name="FileProcessingStateMachine",
+                                         timeout=Duration.minutes(5))
 
         # S3 Event Notification to trigger the Step Function
         bucket.add_event_notification(s3.EventType.OBJECT_CREATED, s3n.LambdaDestination(validate_function))
 
-        CfnOutput(self, "BucketName", value=bucket.bucket_name)
-        CfnOutput(self, "StateMachineArn", value=sm.state_machine_arn)
+        # CfnOutput(self, "BucketName", value=bucket.bucket_name)
+        # CfnOutput(self, "StateMachineArn", value=state_machine.state_machine_arn)
