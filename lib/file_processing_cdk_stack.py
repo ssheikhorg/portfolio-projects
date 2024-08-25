@@ -19,7 +19,14 @@ class FileProcessingCdkStack(Stack):
 
         # S3 Bucket
         bucket = s3.Bucket(self, "FileProcessingBucket",
+                           bucket_name="file-processing-bucket-1234567890",
                            removal_policy=RemovalPolicy.DESTROY)
+
+        # Lambda layer
+        file_processing_layer = lambda_python.PythonLayerVersion(self, "FileProcessingLambdaLayer",
+                                                                 entry="lib/layer",
+                                                                 compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+                                                                 layer_version_name="FileProcessingLambdaLayer")
 
         # IAM Role for Lambda
         lambda_role = iam.Role(self, "LambdaExecutionRole",
@@ -29,24 +36,31 @@ class FileProcessingCdkStack(Stack):
                                        "service-role/AWSLambdaBasicExecutionRole"),
                                ])
 
+        # Add S3 read permissions to the role
+        bucket.grant_read(lambda_role)
+
         # Lambda Functions using Python 3.12
         validate_function = lambda_python.PythonFunction(self, "ValidateFileFunction",
+                                                         function_name="ValidateFileFunction",
                                                          runtime=lambda_.Runtime.PYTHON_3_12,
-                                                         entry="lambda/validate",  # Directory with validate.py
+                                                         entry="lambdas",
                                                          index="validate.py",
                                                          handler="handler",
-                                                         role=lambda_role)
+                                                         role=lambda_role,
+                                                         layers=[file_processing_layer])
 
         process_function = lambda_python.PythonFunction(self, "ProcessFileFunction",
+                                                        function_name="ProcessFileFunction",
                                                         runtime=lambda_.Runtime.PYTHON_3_12,
-                                                        entry="lambda/process",  # Directory with process.py
+                                                        entry="lambdas",  # Directory with process.py
                                                         index="process.py",
                                                         handler="handler",
                                                         role=lambda_role)
 
         email_function = lambda_python.PythonFunction(self, "SendEmailFunction",
+                                                      function_name="SendEmailFunction",
                                                       runtime=lambda_.Runtime.PYTHON_3_12,
-                                                      entry="lambda/send_email",  # Directory with send_email.py
+                                                      entry="lambdas",  # Directory with send_email.py
                                                       index="send_email.py",
                                                       handler="handler",
                                                       role=lambda_role)
