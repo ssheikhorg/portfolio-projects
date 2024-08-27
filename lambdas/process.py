@@ -1,14 +1,5 @@
-import json
-
-
-def handler(event, context):
+def handler(event, _) -> dict:
     print("Process Event: ", event)
-    is_valid = event["body"]["valid"]
+    is_valid = event.get("valid", False)
 
-    return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "valid": is_valid,
-            "message": "File processed successfully"
-        })
-    }
+    return {"statusCode": 200 if is_valid else 400, "valid": is_valid}
