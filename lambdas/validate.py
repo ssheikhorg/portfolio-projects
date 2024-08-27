@@ -1,12 +1,11 @@
 import io
 import re
-import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 import boto3
 import pandas as pd
 
-s3_client = boto3.client('s3')
+s3_client = boto3.client("s3")
 
 
 @dataclass
@@ -64,24 +63,19 @@ class ScreeningData:
         validations = [
             self.validate_phone_number(),
             self.validate_situational_fields(),
-            self.validate_address_related_fields()
+            self.validate_address_related_fields(),
         ]
         return all(validations)
 
     def validate_phone_number(self) -> bool:
-        if self.Mobile_Number and not re.match(r'^\d{10}$', self.Mobile_Number):
+        if self.Mobile_Number and not re.match(r"^\d{10}$", self.Mobile_Number):
             return False
-        elif self.Home_Number and not re.match(r'^\d{10}$', self.Home_Number):
+        elif self.Home_Number and not re.match(r"^\d{10}$", self.Home_Number):
             return False
         return True
 
     def validate_situational_fields(self) -> bool:
-        return any([
-            self.Mobile_Number,
-            self.Home_Number,
-            self.SSN,
-            self.Address_1
-        ])
+        return any([self.Mobile_Number, self.Home_Number, self.SSN, self.Address_1])
 
     def validate_address_related_fields(self) -> bool:
         if not self.Address_1:
@@ -91,42 +85,26 @@ class ScreeningData:
         return True
 
 
-def handler(event, context) -> dict:
+def handler(event, _) -> dict:
     print("Validate Event: ", event)
+    if not event.get("detail"):
+        return {"statusCode": 400, "valid": False}
+
     is_valid = True
-    try:
-        # Extract bucket and key from the event
-        bucket_name = event['Records'][0]['s3']['bucket']['name']
-        object_key = event['Records'][0]['s3']['object']['key']
+    bucket_name = event["detail"]["bucket"]["name"]
+    object_key = event["detail"]["object"]["key"]
 
-        # Download the file from S3
-        file_obj = s3_client.get_object(Bucket=bucket_name, Key=object_key)
-        file_content = file_obj['Body'].read().decode('utf-8', errors='ignore')
+    file_obj = s3_client.get_object(Bucket=bucket_name, Key=object_key)
+    file_content = file_obj["Body"].read().decode("utf-8", errors="ignore")
 
-        # Read the CSV content
-        csv_reader = pd.read_csv(io.StringIO(file_content))
-        print("CSV content: ", csv_reader)
-        # csv_reader = pd.read_csv(io.StringIO(open("docs/examples.csv").read()))
+    # Read the CSV content
+    csv_reader = pd.read_csv(io.StringIO(file_content))
+    print("CSV content: ", csv_reader)
 
-        for index, row in csv_reader.iterrows():
-            screening_data = ScreeningData(**row)
-            if not screening_data.validate():
-                is_valid = False
-                break
-        print("Validation result: ", is_valid)
-        return {
-              "statusCode": 200 if is_valid else 400,
-              "body": {
-                "message": "File validation successful" if is_valid else "File validation failed",
-                "valid": is_valid
-              }
-            }
-    except Exception as e:
-        print(e)
-        return {
-            "statusCode": 500,
-            "body": {
-                "message": f"An error occurred: {str(e)}",
-                "valid": False
-            }
-        }
+    for index, row in csv_reader.iterrows():
+        screening_data = ScreeningData(**row)
+        if not screening_data.validate():
+            is_valid = False
+            break
+    print("Validation result: ", is_valid)
+    return {"statusCode": 200, "valid": is_valid}
