@@ -49,6 +49,13 @@ class FileProcessingCdkStack(Stack):
                 ),
             ],
         )
+        # SES SendEmail permission to the role
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["ses:SendEmail"],
+                resources=["*"],
+            )
+        )
 
         # Add S3 read permissions to the role
         bucket.grant_read(lambda_role)
