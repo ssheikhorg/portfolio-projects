@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 
 import cv2
-import numpy as np
 from utils.miscellaneous import create_tmp_file
 
 

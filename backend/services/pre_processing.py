@@ -138,6 +138,6 @@ def image_processing(file_bytes: bytes):
             return file_bytes
     except Exception as e:
         raise HTTPException(
-            status_code=700,
+            status_code=500,
             detail="Image processing failed",
         )

@@ -32,10 +32,11 @@ LOG_LEVELS = {"DEBUG": 0, "INFO": 1, "WARNING": 2, "ERROR": 3, "CRITICAL": 4}
     "/processFile",
     responses={
         200: {"description": "Successful response"},
-        700: {
-            "description": "Custom error",
-            "content": {"application/json": {"example": {"detail": "Error message"}}},
-        },
+        400: {"description": "Bad Request"},
+        413: {"description": "Payload Too Large"},
+        415: {"description": "Unsupported Media Type"},
+        422: {"description": "Unprocessable Entity"},
+        500: {"description": "Internal Server Error"},
     },
 )
 async def process_file_public(
@@ -235,11 +236,13 @@ async def process_file_public(
         log_collector(
             "debug", f"HTTP exception status code: {http_exception.status_code}"
         )
-        if http_exception.status_code == 700:
-            return JSONResponse(
-                status_code=700, content={"detail": http_exception.detail}
-            )
         raise http_exception
+    except ValueError as ve:
+        log_collector("error", f"Validation error: {str(ve)}")
+        raise HTTPException(status_code=422, detail=str(ve))
+    except IOError as io_error:
+        log_collector("error", f"File operation error: {str(io_error)}")
+        raise HTTPException(status_code=400, detail=str(io_error))
     except Exception as e:
         log_collector("critical", f"An unexpected error occurred: {str(e)}")
         log_collector(
@@ -247,5 +250,5 @@ async def process_file_public(
             f"Exception type: {type(e).__name__}, Traceback: {traceback.format_exc()}",
         )
         raise HTTPException(
-            status_code=700, detail=f"An unexpected error occurred: {str(e)}"
+            status_code=500, detail=f"An unexpected error occurred: {str(e)}"
         )

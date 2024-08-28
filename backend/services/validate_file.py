@@ -38,7 +38,7 @@ def validate_file(
 
     if file_extension not in allowed_extensions:
         raise HTTPException(
-            status_code=700,
+            status_code=415,
             detail="File type not allowed",
         )
 
