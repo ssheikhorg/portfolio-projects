@@ -100,6 +100,6 @@ async def sanitize_file_content(file: bytes, file_extension: str):
     except Exception as e:
         logs("critical", f"File sanitization failed: {str(e)}")
         raise HTTPException(
-            status_code=700,
+            status_code=500,
             detail=f"File sanitization error: {str(e)}",
         )

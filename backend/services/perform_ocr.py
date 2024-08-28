@@ -192,7 +192,7 @@ async def process_OCR(
     if file_extension.lower() not in mime_map:
         logs("error", f"Unsupported file extension: {file_extension}")
         raise HTTPException(
-            status_code=700,
+            status_code=415,
             detail=f"Unsupported file extension: {file_extension}",
         )
 
@@ -228,6 +228,6 @@ async def process_OCR(
         else:
             logs("error", "No contrast image provided for image processing")
             raise HTTPException(
-                status_code=700,
+                status_code=400,
                 detail="No file data provided for OCR processing",
             )

@@ -26,7 +26,7 @@ def clamav_scan(
         return scan_with_clamav(file_path)
     except Exception as e:
         logs("error", f"ClamAV scan failed: {str(e)}")
-        raise HTTPException(status_code=700, detail=f"ClamAV scan failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"ClamAV scan failed: {str(e)}")
 
 
 def scan_with_clamav(temp_file: str) -> Tuple[int, str, str]:
@@ -64,7 +64,7 @@ def yara_scan(
         return scan_with_yara(file_path, rules)
     except Exception as e:
         logs("error", f"YARA scan failed: {str(e)}")
-        raise HTTPException(status_code=700, detail=f"YARA scan failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"YARA scan failed: {str(e)}")
 
 
 def mycallback(data: dict) -> int:
