@@ -6,7 +6,7 @@ from typing import Optional
 import cv2
 import fitz
 import numpy as np
-from fastapi import HTTPException, status
+from fastapi import HTTPException
 from paddleocr import PaddleOCR
 from PIL import Image
 from reportlab.lib.colors import black, red
