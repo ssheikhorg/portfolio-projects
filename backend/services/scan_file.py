@@ -5,7 +5,7 @@ from config import settings
 from fastapi import HTTPException
 from schema.data_schema import YaraMatchDetails
 from utils.log_function import logs
-from utils.miscellaneous import Command, save_file
+from utils.miscellaneous import Command, create_tmp_file, save_file
 
 
 def clamav_scan(
@@ -60,7 +60,7 @@ def yara_scan(
     """
     try:
         rules = yara.compile(filepath=settings.yara_rule_packages)
-        file_path = save_file(file_bytes, f"file_to_scan.{file_extension}")
+        file_path = create_tmp_file(file_bytes, f"file_to_scan.{file_extension}")
         return scan_with_yara(file_path, rules)
     except Exception as e:
         logs("error", f"YARA scan failed: {str(e)}")
