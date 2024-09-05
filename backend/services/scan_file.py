@@ -1,3 +1,4 @@
+import os
 from typing import List, Tuple, Union
 
 import yara
@@ -46,7 +47,7 @@ def scan_with_clamav(temp_file: str) -> Tuple[int, str, str]:
 
 
 def yara_scan(
-    file_bytes: bytes, file_extension: str
+    file_name: str, file_bytes: bytes, file_extension: str
 ) -> Union[List[YaraMatchDetails], bool]:
     """
     Perform YARA scan on the provided file.
@@ -59,8 +60,17 @@ def yara_scan(
         Union[List[YaraMatchDetails], bool]: List of YARA match details or False if failed.
     """
     try:
-        rules = yara.compile(filepath=settings.yara_rule_packages)
         file_path = create_tmp_file(file_bytes, f"file_to_scan.{file_extension}")
+        externals = {
+            "filename": file_name,
+            "filepath": file_path,
+            "extension": file_extension,
+            "filetype": "",
+            "md5": "",
+            "filesize": os.path.getsize(file_path),
+            "fullpath": os.path.abspath(file_path),
+        }
+        rules = yara.compile(filepath=settings.yara_rule_packages, externals=externals)
         return scan_with_yara(file_path, rules)
     except Exception as e:
         logs("error", f"YARA scan failed: {str(e)}")
@@ -106,8 +116,11 @@ def scan_with_yara(
     Returns:
         Union[str, List[YaraMatchDetails]]: "OK" if no matches found, otherwise list of YARA match details.
     """
+
     matches = rules.match(
-        file_path, callback=mycallback, which_callbacks=yara.CALLBACK_MATCHES
+        file_path,
+        callback=mycallback,
+        which_callbacks=yara.CALLBACK_MATCHES,
     )
     if not matches:
         return "OK"

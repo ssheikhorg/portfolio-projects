@@ -33,7 +33,7 @@ def write_yara_rules_to_single_file(
                 yara_rule_str = rebuild_yara_rule(rule)
                 # Try to compile the YARA rule
                 try:
-                    compiled_rules = yara.compile(
+                    yara.compile(
                         source=yara_rule_str,
                         externals={
                             "filename": dummy,

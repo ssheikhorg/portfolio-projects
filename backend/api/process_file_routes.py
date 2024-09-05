@@ -125,7 +125,9 @@ async def process_file_public(
         if scope_malware_scan:
             log_collector("debug", "Starting malware scan")
             clamav_task = asyncio.to_thread(clamav_scan, processed_file, file_extension)
-            yara_task = asyncio.to_thread(yara_scan, processed_file, file_extension)
+            yara_task = asyncio.to_thread(
+                yara_scan, file_name, processed_file, file_extension
+            )
 
             clamav_result, yara_result = await asyncio.gather(clamav_task, yara_task)
             clamav_status, clamav_details, clamav_error = clamav_result
