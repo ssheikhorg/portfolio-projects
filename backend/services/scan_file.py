@@ -71,7 +71,6 @@ def yara_scan(
             "fullpath": os.path.abspath(file_path),
         }
         rules = yara.compile(filepath=settings.yara_rule_packages, externals=externals)
-        file_path = create_tmp_file(file_bytes, f"file_to_scan.{file_extension}")
         return scan_with_yara(file_path, rules)
     except Exception as e:
         logs("error", f"YARA scan failed: {str(e)}")
@@ -117,8 +116,11 @@ def scan_with_yara(
     Returns:
         Union[str, List[YaraMatchDetails]]: "OK" if no matches found, otherwise list of YARA match details.
     """
+
     matches = rules.match(
-        file_path, callback=mycallback, which_callbacks=yara.CALLBACK_MATCHES
+        file_path,
+        callback=mycallback,
+        which_callbacks=yara.CALLBACK_MATCHES,
     )
     if not matches:
         return "OK"

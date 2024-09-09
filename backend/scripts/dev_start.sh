@@ -2,7 +2,7 @@
 
 # Setup and start cron
 setup_cron() {
-  CRON_SCHEDULE=${CRON_SCHEDULE:-"0 0 * * *"}  # Default to every minute if not set
+  CRON_SCHEDULE=${CRON_SCHEDULE:-"0 0 * * *"}  # Default to midnight every day if not set
   chmod +x /app/scripts/cron_script.sh
   echo "$CRON_SCHEDULE /app/scripts/cron_script.sh >> /var/log/cron.log 2>&1" > /etc/cron.d/mycron
   chmod 0644 /etc/cron.d/mycron
