@@ -9,8 +9,8 @@ from starlette.responses import Response
 
 from utils import error_handler
 from config import settings
-from .file_service.process_file_routes import router as process_file_router  # noqa
-from .issue_token_routes import router as issue_token_router  # noqa
+from .process_file.routes import router as process_file_router  # noqa
+from .core.issue_token_routes import router as issue_token_router  # noqa
 
 
 def init_routers(app_: FastAPI) -> None:

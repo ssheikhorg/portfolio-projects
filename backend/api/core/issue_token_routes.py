@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Header, HTTPException
 from utils.issue_token import create_jwt_token
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/core",
+    tags=["Core"],
+    responses={404: {"description": "Not found"}},
+)
 
 
 @router.post("/issueToken")

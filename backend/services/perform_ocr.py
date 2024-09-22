@@ -15,7 +15,6 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from utils.log_function import logs
 from utils.miscellaneous import create_tmp_file
 
 
@@ -50,10 +49,6 @@ def process_ocr_result(c, result, width, height, draw_debug=True):
 
 
 def save_pdf_ocr(result, pdf_path, tmp_dir: str, draw_debug=True) -> str:
-    logs(
-        "info",
-        f"Starting OCR save process for PDF: {pdf_path} in temporary directory: {tmp_dir}",
-    )
     output_pdf = BytesIO()
     c = canvas.Canvas(output_pdf)
     with fitz.open(pdf_path) as pdf:
@@ -77,7 +72,6 @@ def save_pdf_ocr(result, pdf_path, tmp_dir: str, draw_debug=True) -> str:
     final_pdf_path = os.path.join(tmp_dir, "result.pdf")
     with open(final_pdf_path, "wb") as f:
         f.write(output_pdf.getvalue())
-    logs("info", f"Final OCR PDF saved at: {final_pdf_path}")
     return final_pdf_path
 
 
@@ -140,8 +134,6 @@ def process_image_with_ocr(image, result, draw_debug=True):
 
 
 def save_unprocessed_image_ocr(result, tmp_file_path, draw_debug=True):
-    logs("info", f"Starting OCR save process for unprocessed image: {tmp_file_path}")
-
     # Open the image
     with Image.open(tmp_file_path) as image:
         original_format = image.format
@@ -149,14 +141,10 @@ def save_unprocessed_image_ocr(result, tmp_file_path, draw_debug=True):
 
     # Save the result image in the original format
     result_image.save(tmp_file_path, format=original_format)
-
-    logs("info", f"Processed image with OCR results saved at: {tmp_file_path}")
     return tmp_file_path
 
 
 def save_image_ocr(result, contrast_image: np.ndarray, draw_debug=True):
-    logs("info", "Starting OCR save process for contrast image")
-
     # Convert numpy array to PIL Image
     image = Image.fromarray(cv2.cvtColor(contrast_image, cv2.COLOR_BGR2RGB))
     result_image = process_image_with_ocr(image, result, draw_debug)
@@ -166,7 +154,6 @@ def save_image_ocr(result, contrast_image: np.ndarray, draw_debug=True):
         result_image.save(tmp_file, format="PNG")
         tmp_file_path = tmp_file.name
 
-    logs("info", f"Processed contrast image with OCR results saved at: {tmp_file_path}")
     return tmp_file_path
 
 
@@ -191,7 +178,6 @@ async def process_OCR(
     }
 
     if file_extension.lower() not in mime_map:
-        logs("error", f"Unsupported file extension: {file_extension}")
         raise HTTPException(
             status_code=415,
             detail=f"Unsupported file extension: {file_extension}",
@@ -208,13 +194,11 @@ async def process_OCR(
         if file_extension.lower() == "pdf":
             # Process PDF
             result = ocr_agent.ocr(tmp_file_path, cls=True)
-            logs("info", f"OCR result for PDF: {result}")
             tmp_dir = tempfile.mkdtemp()
             ocr_file_path = save_pdf_ocr(result, tmp_file_path, tmp_dir, draw_debug)
             return ocr_file_path
         else:
             result = ocr_agent.ocr(tmp_file_path, cls=True)
-            logs("info", f"OCR result for image: {result}")
             ocr_file_path = save_unprocessed_image_ocr(
                 result, tmp_file_path, draw_debug
             )
@@ -223,11 +207,9 @@ async def process_OCR(
         if contrast_image is not None:
             # Process image
             result = ocr_agent.ocr(contrast_image, cls=True)
-            logs("info", f"OCR result for contrast image: {result}")
             ocr_file_path = save_image_ocr(result, contrast_image, draw_debug)
             return ocr_file_path
         else:
-            logs("error", "No contrast image provided for image processing")
             raise HTTPException(
                 status_code=400,
                 detail="No file data provided for OCR processing",
