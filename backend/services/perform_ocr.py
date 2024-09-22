@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import tempfile
 from io import BytesIO
 from typing import Optional
@@ -17,8 +18,8 @@ from reportlab.pdfgen import canvas
 from utils.log_function import logs
 from utils.miscellaneous import create_tmp_file
 
-pdfmetrics.registerFont(TTFont("GermanFont", "/app/static/fonts/german.ttf"))
 
+pdfmetrics.registerFont(TTFont("GermanFont", Path("static") / "fonts" / "german.ttf"))
 
 def process_ocr_result(c, result, width, height, draw_debug=True):
     for line in result:
