@@ -33,7 +33,7 @@ origins = ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_methods=["GET", "PUT"],
+    allow_methods=["POST", "PUT"],
     allow_headers=["*"],
 )
 
