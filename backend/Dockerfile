@@ -1,4 +1,4 @@
-FROM python:3.12-slim-buster
+FROM python:3.12.1-slim
 
 RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1 cron git poppler-utils libmupdf-dev net-tools 
 
@@ -36,4 +36,4 @@ EXPOSE 8000
 ENV PYTHONUNBUFFERED=1
 
 # Run the start script, it will check for an /app/devstart.sh script
-CMD ["./dev_start.sh"]
+CMD ["./scripts/dev_start.sh"]
