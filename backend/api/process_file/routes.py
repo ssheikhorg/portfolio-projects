@@ -9,7 +9,7 @@ from .repositories import process_file_services
 router = APIRouter(prefix="/file_service", tags=["File Processing"])
 
 
-@router.post("/processFile")
+@router.put("/processFile")
 async def process_file_public(
         _: AuthSchema = Depends(validate_token),
         file: UploadFile = File(..., description="File to be processed"),
