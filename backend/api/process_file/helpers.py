@@ -6,16 +6,15 @@ from fastapi import HTTPException
 
 import numpy as np
 
+from api.process_file.processor import get_mime_type
 from config import settings
 from services.filenaming import file_rename
-from services.named_entity_recognition import named_entity_recogniztion
 from services.perform_ocr import process_OCR
 from services.pre_processing import image_processing
 from services.sanitize_file_uploads import sanitize_file_content
 from services.scan_file import clamav_scan, yara_scan
 from services.scope_optimization import scope_opt
 from services.validate_file import validate_file
-from utils.miscellaneous import get_mime_type, create_tmp_file
 
 
 async def scan_file(processed_file: bytes, file_name: str, file_extension: str) -> Tuple:
@@ -73,7 +72,6 @@ async def ocr_processing_action(body, processed_file, file_extension, file_name,
 
 
 async def named_entity_recognition_action(body, processed_file, file_extension, file_name, is_ndarray):
-    named_entity_recogniztion()
     return processed_file, None, is_ndarray
 
 

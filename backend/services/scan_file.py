@@ -2,10 +2,11 @@ import os
 from typing import List, Tuple, Union
 
 import yara
+
+from api.process_file.processor import save_file, create_tmp_file, Command
 from config import settings
 from fastapi import HTTPException
 from schema.data_schema import YaraMatchDetails
-from utils.miscellaneous import Command, create_tmp_file, save_file
 
 
 def clamav_scan(

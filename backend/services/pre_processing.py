@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
 from fastapi import HTTPException
-from utils.miscellaneous import is_image
+
+from api.process_file.processor import is_image
 
 
 def zoom_image(image, zoom_factor):

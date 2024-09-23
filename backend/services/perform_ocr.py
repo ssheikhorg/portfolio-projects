@@ -15,10 +15,11 @@ from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
-from utils.miscellaneous import create_tmp_file
 
+from api.process_file.processor import create_tmp_file
 
 pdfmetrics.registerFont(TTFont("GermanFont", Path("static") / "fonts" / "german.ttf"))
+
 
 def process_ocr_result(c, result, width, height, draw_debug=True):
     for line in result:
@@ -158,11 +159,11 @@ def save_image_ocr(result, contrast_image: np.ndarray, draw_debug=True):
 
 
 async def process_OCR(
-    file_name: str,
-    file_extension: str,
-    file_bytes: Optional[bytes] = None,
-    contrast_image: Optional[np.ndarray] = None,
-    draw_debug: Optional[bool] = False,
+        file_name: str,
+        file_extension: str,
+        file_bytes: Optional[bytes] = None,
+        contrast_image: Optional[np.ndarray] = None,
+        draw_debug: Optional[bool] = False,
 ):
     # Validate file extension
     mime_map = {
