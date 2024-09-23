@@ -1,8 +1,9 @@
 from typing import Optional
 
-from fastapi import APIRouter, File, UploadFile, Form
+from fastapi import APIRouter, File, UploadFile, Form, Depends
 from fastapi.responses import JSONResponse
-from schema.data_schema import FileProcessingOptions
+from schema.data_schema import FileProcessingOptions, AuthSchema
+from utils.authentication_header import validate_token
 from .repositories import process_file_services
 
 router = APIRouter(prefix="/file_service", tags=["File Processing"])
@@ -10,6 +11,8 @@ router = APIRouter(prefix="/file_service", tags=["File Processing"])
 
 @router.post("/processFile")
 async def process_file_public(
+        _: AuthSchema = Depends(validate_token),
+        file: UploadFile = File(..., description="File to be processed"),
         scope_filesize_check: bool = Form(..., description="Confirm filesize check (True/False)"),
         max_file_size: Optional[int] = Form(None, description="Max file size in MB"),
         scope_malware_scan: bool = Form(..., description="Perform malware scan (True/False)"),
@@ -23,8 +26,6 @@ async def process_file_public(
         scope_optimization: bool = Form(..., description="Perform file optimization (True/False)"),
         scope_renaming: bool = Form(..., description="Perform file renaming (True/False)"),
         return_file: bool = Form(..., description="Return file (True/False)"),
-        file: UploadFile = File(..., description="File to be processed")
-
 ) -> JSONResponse:
     body = FileProcessingOptions(
         scope_filesize_check=scope_filesize_check,
