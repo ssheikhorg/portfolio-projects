@@ -44,9 +44,7 @@ async def check_filesize_action(body, processed_file, file_extension, file_name,
 
 
 async def malware_scan_action(body, processed_file, file_extension, file_name, is_ndarray):
-    clamav_result, yara_result = await scan_file(processed_file, file_name, file_extension)
-    clamav_status, clamav_details, clamav_error = clamav_result
-    # You may want to handle or log these results here
+    await scan_file(processed_file, file_name, file_extension)
     return processed_file, None, is_ndarray
 
 
