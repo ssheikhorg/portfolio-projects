@@ -11,7 +11,6 @@ import sys
 import yaml
 
 sys.path.append("/app")
-from utils.log_function import logs, set_log_level
 from utils.yara_forgerules import rule_output, run_collector, yara_compile
 
 if __name__ == "__main__":
@@ -28,22 +27,17 @@ if __name__ == "__main__":
 
     # Setup logging based on command line argument or default
     loglevel = "Debug" if args.debug else "Info"
-    set_log_level(loglevel)
 
     # Log script version and config file
-    logs("Info", f"Running script version {__version__}")
-    logs("Info", f"Using config file: {args.config}")
 
     # Load YARA Forge config from YAML file
     with open(args.config, "r") as f:
         YARA_FORGE_CONFIG = yaml.safe_load(f)
 
     # Retrieve YARA rule sets
-    logs("Info", "Retrieving YARA rule sets...")
     yara_rule_repo_sets = run_collector.retrieve_yara_rule_sets(
         YARA_FORGE_CONFIG["repo_staging_dir"],
         YARA_FORGE_CONFIG["yara_repositories"],
-        logs,
     )
 
     # Write YARA rules to a single file

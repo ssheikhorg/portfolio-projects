@@ -4,7 +4,7 @@ from fastapi import UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 
 from schema.data_schema import ProcessFileResponse
-from utils.global_exception import handle_global_exception
+from utils.error_handler import handle_global_exception
 from utils.log_function import get_logger
 from .helpers import (
     check_filesize_action, malware_scan_action,
