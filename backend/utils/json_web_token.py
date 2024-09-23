@@ -1,23 +1,42 @@
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from typing import Optional
 
 import jwt
-from config import settings
-from fastapi import Depends, Header, HTTPException
+from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass
+from fastapi import HTTPException, Security
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from .custom_exceptions import BadCredentialsException
-from .issue_token import get_token_info
+
+from config import settings
 
 
-@dataclass
-class JsonWebToken:
-    """Perform JSON Web Token (JWT) validation using PyJWT"""
+class JWTAdmin:
+    def __init__(self, jwt_token: str):
+        self.jwt_access_token: str = jwt_token
+        self.secret_key: str = settings.secret_key
+        self.algorithm: str = settings.algorithm
+        self.issuer: str = settings.issuer
 
-    jwt_access_token: str
-    secret_key: str = settings.secret_key
-    algorithm: str = settings.algorithm
-    issuer: str = settings.issuer
+    def get_token_info(self, api_key: str) -> Optional[dict]:  # noqa
+        api_data = settings.api_tokens
+        for token in api_data:
+            if token["api_key"] == api_key:
+                return token
+        return None
+
+    def create_jwt_token(self, api_key: str):
+        token_info = self.get_token_info(api_key)
+        if token_info is None:
+            raise HTTPException(status_code=400, detail="Invalid API key")
+
+        issuer = settings.issuer
+        subject = token_info["subject"]
+        issued_at = datetime.utcnow()
+        expiration_time = issued_at + timedelta(minutes=settings.expiration_time_minutes)
+        payload = {"iss": issuer, "sub": subject, "iat": issued_at, "exp": expiration_time}
+        jwt_token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
+        return jwt_token
 
     def validate(self):
         for token in settings.api_tokens:
@@ -47,3 +66,9 @@ class JsonWebToken:
 
         except jwt.PyJWTError:
             raise BadCredentialsException
+
+
+def validate_token(credentials: HTTPAuthorizationCredentials = Security(HTTPBearer())):
+    token = credentials.credentials
+    jwt_credentials = JWTAdmin(token)
+    return jwt_credentials.validate()

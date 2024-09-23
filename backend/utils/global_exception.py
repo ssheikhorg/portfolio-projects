@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 import traceback
 
-from utils.log_function import get_logger
+from .log_function import get_logger
 
 logger, memory_handler = get_logger("File Processing")
 

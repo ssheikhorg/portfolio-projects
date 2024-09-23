@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Header, HTTPException
-from utils.issue_token import create_jwt_token
+from utils.json_web_token import JWTAdmin
 
 router = APIRouter(
     prefix="/core",
@@ -20,7 +20,8 @@ async def issue_token(api_key: str = Header(..., alias="X-API-Key")):
     - dict: A dictionary with the status and the generated JWT token.
     """
     try:
-        jwt_token = create_jwt_token(api_key)
+        jwt_admin = JWTAdmin(api_key)
+        jwt_token = jwt_admin.create_jwt_token()
         return {"status": "success", "token": jwt_token}
     except HTTPException as http_exception:
         raise http_exception

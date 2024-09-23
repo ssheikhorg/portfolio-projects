@@ -164,9 +164,6 @@ async def process_OCR(
     contrast_image: Optional[np.ndarray] = None,
     draw_debug: Optional[bool] = False,
 ):
-    logs(
-        "info", f"Processing OCR for file: {file_name} with extension: {file_extension}"
-    )
     # Validate file extension
     mime_map = {
         "pdf": "application/pdf",

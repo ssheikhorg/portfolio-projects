@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, File, UploadFile, Form, Depends
 from fastapi.responses import JSONResponse
 from schema.data_schema import FileProcessingOptions, AuthSchema
-from utils.authentication_header import validate_token
+from utils.json_web_token import validate_token
 from .repositories import process_file_services
 
 router = APIRouter(prefix="/file_service", tags=["File Processing"])
