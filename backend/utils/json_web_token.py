@@ -25,14 +25,14 @@ class JWTAdmin:
                 return token
         return None
 
-    def create_jwt_token(self, api_key: str):
-        token_info = self.get_token_info(api_key)
+    def create_jwt_token(self) -> str:
+        token_info = self.get_token_info(self.jwt_access_token)
         if token_info is None:
             raise HTTPException(status_code=400, detail="Invalid API key")
 
         issuer = settings.issuer
         subject = token_info["subject"]
-        issued_at = datetime.utcnow()
+        issued_at = datetime.now(timezone.utc)
         expiration_time = issued_at + timedelta(minutes=settings.expiration_time_minutes)
         payload = {"iss": issuer, "sub": subject, "iat": issued_at, "exp": expiration_time}
         jwt_token = jwt.encode(payload, settings.secret_key, algorithm=settings.algorithm)
