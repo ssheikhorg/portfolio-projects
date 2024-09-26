@@ -28,6 +28,11 @@ def init_exception_handlers(app_: FastAPI) -> None:
 
 class SecureHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+
+        # Allow Swagger UI to load without strict headers
+        if request.url.path in ["/", "/openapi.json", "/docs"]:
+            return await call_next(request)
+            
         # Check if running locally (localhost or 127.0.0.1)
         if request.client.host in ['127.0.0.1', 'localhost']:
             return await call_next(request)
