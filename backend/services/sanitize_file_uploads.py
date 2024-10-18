@@ -4,7 +4,6 @@ import magic
 from fastapi import HTTPException, status
 from pikepdf import Pdf, PdfError
 from PIL import Image
-from utils.log_function import logs
 
 
 async def sanitize_pdf(file_bytes: bytes):
@@ -46,10 +45,8 @@ async def sanitize_pdf(file_bytes: bytes):
             output_pdf = BytesIO()
             pdf.save(output_pdf)
             output_pdf.seek(0)
-            logs("info", "PDF sanitization successful: harmful content removed.")
             return output_pdf.getvalue()  # Return output_pdf instead of pdf
     except PdfError as e:
-        logs("critical", f"PDF sanitization failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"PDF sanitization error: {str(e)}",
@@ -71,13 +68,8 @@ async def sanitize_image(file_bytes: bytes):
             )
             image.save(output_image, format=format_to_use)
             output_image.seek(0)
-            logs(
-                "info",
-                "Image sanitization successful: metadata and potential threats removed.",
-            )
         return output_image.getvalue()
     except IOError as e:
-        logs("critical", f"Image sanitization failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Image sanitization error: {str(e)}",
@@ -95,10 +87,8 @@ async def sanitize_file_content(file: bytes, file_extension: str):
         else:
             sanitized_file = await sanitize_image(file)  # Use clean_file here
 
-        logs("info", f"File sanitization successful.")
         return sanitized_file
     except Exception as e:
-        logs("critical", f"File sanitization failed: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"File sanitization error: {str(e)}",

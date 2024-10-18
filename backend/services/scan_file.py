@@ -2,11 +2,11 @@ import os
 from typing import List, Tuple, Union
 
 import yara
+
+from api.process_file.processor import save_file, create_tmp_file, Command
 from config import settings
 from fastapi import HTTPException
 from schema.data_schema import YaraMatchDetails
-from utils.log_function import logs
-from utils.miscellaneous import Command, create_tmp_file, save_file
 
 
 def clamav_scan(
@@ -26,7 +26,6 @@ def clamav_scan(
         file_path = save_file(file_bytes, f"file_to_scan.{file_extension}")
         return scan_with_clamav(file_path)
     except Exception as e:
-        logs("error", f"ClamAV scan failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"ClamAV scan failed: {str(e)}")
 
 
@@ -73,7 +72,6 @@ def yara_scan(
         rules = yara.compile(filepath=settings.yara_rule_packages, externals=externals)
         return scan_with_yara(file_path, rules)
     except Exception as e:
-        logs("error", f"YARA scan failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"YARA scan failed: {str(e)}")
 
 
@@ -99,7 +97,6 @@ def mycallback(data: dict) -> int:
             for string_match in data["strings"]
         ],
     )
-    logs("info", f"Match detail for YARA scan: {match_detail}")
     return yara.CALLBACK_CONTINUE
 
 

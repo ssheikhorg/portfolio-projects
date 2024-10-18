@@ -1,6 +1,5 @@
 from config import settings
 from fastapi import HTTPException, status
-from utils.log_function import logs
 
 
 def validate_mime_type(actual_mime_type: str, expected_mime_type: str):
@@ -9,15 +8,10 @@ def validate_mime_type(actual_mime_type: str, expected_mime_type: str):
     Raises HTTPException for unsupported or mismatched formats.
     """
     if actual_mime_type != expected_mime_type:
-        logs(
-            "warning",
-            f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}",
-        )
         raise HTTPException(
             status_code=700,
             detail=f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}.",
         )
-    logs("info", f"MIME type validated based on content: {actual_mime_type}")
 
 
 def validate_file(

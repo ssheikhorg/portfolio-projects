@@ -1,7 +1,7 @@
 from enum import Enum
-from typing import List, Optional, Union
+from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class StringMatch(BaseModel):
@@ -65,3 +65,18 @@ class ProcessFileResponse(BaseModel):
     file_size: int
     mime_type: str
     logs: List[str]
+
+
+class FileProcessingOptions(BaseModel):
+    scope_filesize_check: bool
+    max_file_size: Optional[int]
+    scope_malware_scan: bool
+    scope_validation: bool
+    scope_sanitization: bool
+    file_category: FileCategory
+    scope_image_preprocessing: bool
+    scope_optical_character_recognition: bool
+    scope_named_entity_recognition: bool
+    scope_optimization: bool
+    scope_renaming: bool
+    return_file: bool

@@ -1,40 +1,42 @@
 # Core
-fastapi>=0.85.0
-python-dotenv==1.0.0
+fastapi==0.115.0
+python-dotenv==1.0.1
+starlette==0.38.5
 
 # Security and Authentication
-PyJWT==2.4.0
+PyJWT==2.9.0
 passlib==1.7.4
 
 # File Processing
-PyPDF2==3.0.1
-pillow==10.3.0
-python-mimeparse==1.6.0
-pikepdf==9.0.0
-python-magic==0.4.3
+pypdf2==3.0.1
+pillow==10.4.0
+python-mimeparse==2.0.0
+pikepdf==9.2.1
+python-magic==0.4.27
+#python-magic-bin==0.4.14
 
 # Machine Learning and OCR
-opencv-python
-paddlepaddle==2.6.1
-paddleocr==2.7.3
-PyMuPDF==1.24.5
-
-# Web and HTTP
-python-multipart==0.0.9
+opencv-python==4.10.0.84
+paddlepaddle==2.6.2
+paddleocr==2.8.1
+PyMuPDF==1.24.10
+python-multipart==0.0.10
 
 # Security
 secure==0.3.0
 
 # YARA (malware identification)
-yara-python==4.4.0
+yara-python==4.5.1
 
 # configuration
-pydantic_settings
+pydantic-settings==2.5.2
 
 # Development Tools
 plyara==2.1.1
-gitpython==3.1.31
+GitPython==3.1.43
 clamd==1.0.2
-numpy==1.24.0
-pdf2image==1.7.0
+numpy<2.0
+pdf2image==1.17.0
 reportlab==4.2.2
+uvicorn==0.30.6
+setuptools==75.1.0

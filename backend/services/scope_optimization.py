@@ -6,7 +6,8 @@ import cv2
 import fitz
 import numpy as np
 from PIL import Image
-from utils.miscellaneous import create_tmp_file
+
+from api.process_file.processor import create_tmp_file
 
 
 def scope_opt(input_data, file_extension, file_name, quality=50, max_size=(800, 800)):

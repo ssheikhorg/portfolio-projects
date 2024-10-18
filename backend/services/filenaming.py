@@ -2,7 +2,8 @@ import os
 from datetime import datetime
 
 import cv2
-from utils.miscellaneous import create_tmp_file
+
+from api.process_file.processor import create_tmp_file
 
 
 def file_rename(file_data, file_name: str, is_ndarray: bool):

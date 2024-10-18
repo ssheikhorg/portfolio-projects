@@ -24,8 +24,8 @@ __pycache__
 *.pyd
 *.zip
 python
-lib/
 libs/
+.idea/
 
 # Unit test / coverage reports
 pip-log.txt

@@ -8,6 +8,10 @@ from io import BytesIO
 import magic
 from config import settings
 from PIL import Image
+from fastapi.security import HTTPBearer
+
+
+security = HTTPBearer()
 
 
 def is_image(file_bytes: bytes) -> bool:
@@ -46,8 +50,8 @@ def get_mime_type(file: BytesIO):
 
 class Command(object):
     def __init__(
-        self,
-        cmd_template=None,
+            self,
+            cmd_template=None,
     ):
         """Command base class for MinIO mc."""
         self.cmd_template = cmd_template

@@ -1,73 +1,56 @@
 import logging
 import sys
-from typing import Dict
+from logging.handlers import TimedRotatingFileHandler
+from pathlib import Path
+from typing import Any, List
 
-# Global variables
-LOGLEVEL_MAPPING: Dict[str, int] = {
-    "Debug": logging.DEBUG,
-    "Info": logging.INFO,
-    "Warning": logging.WARNING,
-    "Error": logging.ERROR,
-    "Critical": logging.CRITICAL,
-}
-CURRENT_LOGLEVEL = logging.INFO
+FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(message)s - %(levelname)s")
+LOG_DIR = Path(__file__).resolve().parent.parent / "logs/tmp"
+if not LOG_DIR.exists():
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 
-class ExactLevelFilter(logging.Filter):
-    def __init__(self, level):
-        self.level = level
-
-    def filter(self, record):
-        return record.levelno == self.level
+def get_console_handler() -> logging.StreamHandler:
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setFormatter(FORMATTER)
+    return console_handler
 
 
-def setup_logging():
-    # Configure the root logger
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)  # Allow all levels, we'll filter later
-
-    # Create a formatter
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+def get_file_handler(name: str) -> TimedRotatingFileHandler:
+    file_handler = TimedRotatingFileHandler(
+        LOG_DIR / f"{name}.log", when="midnight", backupCount=7
     )
-
-    # Create a stream handler
-    stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setFormatter(formatter)
-
-    # Add the handler to the root logger
-    root.addHandler(stream_handler)
+    file_handler.setFormatter(FORMATTER)
+    return file_handler
 
 
-def set_log_level(loglevel: str):
-    global CURRENT_LOGLEVEL
-    CURRENT_LOGLEVEL = LOGLEVEL_MAPPING.get(loglevel, logging.INFO)
+class InMemoryLogHandler(logging.Handler):
+    """Custom log handler that stores logs in a list."""
 
-    # Get the root logger
-    root = logging.getLogger()
+    def __init__(self):
+        super().__init__()
+        self.log_storage = []
 
-    # Remove all handlers
-    for handler in root.handlers[:]:
-        root.removeHandler(handler)
-
-    # Create a new handler with the exact level filter
-    handler = logging.StreamHandler(sys.stdout)
-    handler.setLevel(CURRENT_LOGLEVEL)
-    handler.addFilter(ExactLevelFilter(CURRENT_LOGLEVEL))
-
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-    )
-    handler.setFormatter(formatter)
-
-    root.addHandler(handler)
+    def emit(self, record: logging.LogRecord) -> None:
+        log_entry = self.format(record)
+        self.log_storage.append(log_entry)
 
 
-def get_logger(name: str = __name__):
-    return logging.getLogger(name)
+def get_in_memory_handler() -> InMemoryLogHandler:
+    """Create an in-memory log handler."""
+    memory_handler = InMemoryLogHandler()
+    memory_handler.setFormatter(FORMATTER)
+    return memory_handler
 
 
-def logs(level: str, message: str, logger_name: str = __name__):
-    logger = get_logger(logger_name)
-    log_function = getattr(logger, level.lower(), logger.info)
-    log_function(message)
+def get_logger(logger_name: str) -> tuple[Any, InMemoryLogHandler]:
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(get_console_handler())
+    logger.addHandler(get_file_handler(logger_name))
+
+    memory_handler = get_in_memory_handler()
+    logger.addHandler(memory_handler)
+
+    logger.propagate = False
+    return logger, memory_handler
