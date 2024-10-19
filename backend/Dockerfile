@@ -1,7 +1,10 @@
 FROM python:3.12.1-slim
 
-RUN apt-get update && apt-get -y install curl unzip automake libtool make gcc pkg-config wget libtool libmagic1 libgl1 libglib2.0-0 libgomp1 cron git poppler-utils libmupdf-dev net-tools 
-
+RUN apt-get update && apt-get -y install \
+    curl unzip automake libtool make gcc pkg-config wget libmagic1 \
+    libgl1 libglib2.0-0 libgomp1 cron git poppler-utils libmupdf-dev \
+    net-tools clamdscan clamav-daemon && \
+    rm -rf /var/lib/apt/lists/*
 
 # Download and install YARA
 RUN wget https://github.com/VirusTotal/yara/archive/refs/tags/v4.4.0.tar.gz -O yara-4.4.0.tar.gz && \
@@ -14,13 +17,7 @@ RUN wget https://github.com/VirusTotal/yara/archive/refs/tags/v4.4.0.tar.gz -O y
     cd .. && \
     rm -rf yara-4.4.0 yara-4.4.0.tar.gz
 
-# Install ClamAV client
-RUN apt-get update && \
-    apt-get install -y clamdscan clamav-daemon && \
-    rm -rf /var/lib/apt/lists/*
-
-# RUN chown -R 100:101 /run/clamav
-## add WORKDIR to enable reloads, uvcorn cannot reload if started from root 
+# Switch working directory
 WORKDIR /app
 
 COPY requirements.txt .
@@ -31,9 +28,10 @@ RUN python -m pip install --upgrade pip \
 
 COPY . .
 
+# Ensure the script is executable
+RUN chmod +x ./scripts/dev_start.sh
+
+# Expose the FastAPI port
 EXPOSE 8000
 
-ENV PYTHONUNBUFFERED=1
-
-# Run the start script, it will check for an /app/devstart.sh script
-CMD ["./scripts/dev_start.sh"]
+CMD ["bash", "./scripts/dev_start.sh"]

@@ -5,24 +5,21 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    command: "./scripts/dev_start.sh"
+    command: "bash ./scripts/dev_start.sh"
     ports:
       - "3888:8000"
     volumes:
       - ./backend:/app
-      - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
       - /ziv/shared/rule:/ziv/shared/rule
       - /ziv/shared/packages:/ziv/shared/packages
       - /ziv/shared/scandir:/scandir
-      - /var/lib/docker/data/clamav/sockets/:/run/clamav
     depends_on:
       - clamav
     networks:
       - clamav_network
 
   clamav:
-    image: "file-upload-app"
-    platform: linux/arm64
+    image: "clamav/clamav:latest"   # Changed to the official ClamAV image
     volumes:
       - clam_db:/var/lib/clamav
       - ./backend/config_files/clamd.conf:/etc/clamav/clamd.conf
