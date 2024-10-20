@@ -16,11 +16,7 @@ from services.scan_file import clamav_scan, yara_scan
 from services.scope_optimization import scope_opt
 from services.validate_file import validate_file
 
-
-async def scan_file(processed_file: bytes, file_name: str, file_extension: str) -> Tuple:
-    clamav_task = asyncio.to_thread(clamav_scan, processed_file, file_extension)
-    yara_task = asyncio.to_thread(yara_scan, file_name, processed_file, file_extension)
-    return await asyncio.gather(clamav_task, yara_task)
+from .processor import create_tmp_file
 
 
 async def process_optical_character_recognition(body: dict, file_name: str, file_extension: str, processed_file: bytes,
@@ -43,8 +39,13 @@ async def check_filesize_action(body, processed_file, file_extension, file_name,
 
 
 async def malware_scan_action(body, processed_file, file_extension, file_name, is_ndarray):
-    await scan_file(processed_file, file_name, file_extension)
-    return processed_file, None, is_ndarray
+    try:
+        clamav_task = asyncio.to_thread(clamav_scan, processed_file, file_extension)
+        yara_task = asyncio.to_thread(yara_scan, file_name, processed_file, file_extension)
+        await asyncio.gather(clamav_task, yara_task)
+        return processed_file, None, is_ndarray
+    except Exception as e:
+        print(e)
 
 
 async def validation_action(body, processed_file, file_extension, file_name, is_ndarray):

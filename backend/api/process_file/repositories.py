@@ -1,10 +1,10 @@
 import os
 
-from fastapi import UploadFile
+from fastapi import UploadFile, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 
 from schema.data_schema import ProcessFileResponse
-from utils.error_handler import handle_global_exception
+# from utils.error_handler import handle_global_exception
 from utils.log_function import get_logger
 from .helpers import (
     check_filesize_action, malware_scan_action,
@@ -23,7 +23,7 @@ async def process_file_services(body: dict, file: UploadFile) -> JSONResponse | 
         file_name = file.filename
         file_extension = file_name.split(".")[-1].lower()
         is_ndarray = False
-        file_path = None
+        file_path = generate_response_file_path(processed_file, file_name, is_ndarray)
 
         # Pattern matching for different scopes
         for scope, action in {
@@ -42,14 +42,11 @@ async def process_file_services(body: dict, file: UploadFile) -> JSONResponse | 
                     body, processed_file, file_extension, file_name, is_ndarray
                 )
 
-        # Generate response file path if needed
-        response_arg = file_path or generate_response_file_path(processed_file, file_name, is_ndarray)
-
         # Prepare response
         if body.get("return_file", True):
             filename = os.path.basename(file_path) if body.get("scope_renaming", False) else f"processed_{file_name}"
             return FileResponse(
-                response_arg,
+                file_path,
                 media_type=file.content_type,
                 filename=filename,
             )
@@ -63,4 +60,4 @@ async def process_file_services(body: dict, file: UploadFile) -> JSONResponse | 
                 ).model_dump()
             )
     except Exception as e:
-        handle_global_exception(e)
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")

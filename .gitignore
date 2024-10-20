@@ -1,4 +1,6 @@
 .idea
+backend/.dockerignore
+backend/.idea
 .python-version
 package-lock.json
 *.swp
