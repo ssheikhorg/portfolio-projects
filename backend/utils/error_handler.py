@@ -15,7 +15,7 @@ logger, memory_handler = get_logger("File Processing")
 
 def handle_global_exception(e: Exception) -> None:
     exception_map = {
-        HTTPException: (e.status_code, e.detail),  # type: ignore
+        HTTPException: (e.status_code, e.detail) if isinstance(e, HTTPException) else (500, "Unknown HTTP Exception"),
         ValueError: (422, str(e)),
         IOError: (400, str(e)),
     }

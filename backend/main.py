@@ -1,7 +1,7 @@
 from typing import Callable
 
 import secure
-from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware import Middleware
@@ -9,20 +9,19 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
-from utils.yara_forgerules.yara_clone import process_yara_rules
+from utils.yara_forgerules.yara_clone import create_yara_rules
 from utils import error_handler
 from config import settings
 from api.process_file.routes import router as process_file_router  # noqa
 from api.core.issue_token_routes import router as issue_token_router  # noqa
 
 
-def create_start_app_handler(app):
+def create_start_app_handler(app_: FastAPI) -> Callable:
     async def start_app():
-        await process_yara_rules("/app/config_files/yara-forge-config.yml")
-        print("YARA rules processed successfully.")
-
+        if not await create_yara_rules("/app/config_files/yara-forge-config.yml"):
+            raise Exception("Failed to create YARA rules")
+        print("YARA rules successfully created")
     return start_app
-
 
 def init_routers(app_: FastAPI) -> None:
     # include all routers here
@@ -43,7 +42,7 @@ class SecureHeadersMiddleware(BaseHTTPMiddleware):
         # Allow Swagger UI to load without strict headers
         if request.url.path in ["/", "/openapi.json", "/docs"]:
             return await call_next(request)
-            
+
         # Check if running locally (localhost or 127.0.0.1)
         if request.client.host in ['127.0.0.1', 'localhost']:
             return await call_next(request)

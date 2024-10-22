@@ -4,12 +4,10 @@ import subprocess
 import tempfile
 import uuid
 from io import BytesIO
-
-import magic
-from config import settings
 from PIL import Image
 from fastapi.security import HTTPBearer
 
+from config import settings
 
 security = HTTPBearer()
 
@@ -29,16 +27,6 @@ def create_tmp_file(bytes, filename) -> str:
     with open(file_path, "wb") as f:
         f.write(bytes)
     return file_path
-
-
-def get_mime_type(file: BytesIO):
-    """
-    Determines MIME type of file based on its content using magic
-    """
-    file.seek(0)
-    mime_type = magic.from_buffer(file.read(2048), mime=True).decode("utf-8")
-    file.seek(0)
-    return mime_type
 
 
 class Command(object):

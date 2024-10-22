@@ -1,7 +1,7 @@
-import asyncio
 import os
 import numpy as np
 import yara
+import magic
 
 from fastapi import UploadFile, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
@@ -14,10 +14,11 @@ from services.pre_processing import image_processing
 from services.sanitize_file_uploads import sanitize_file_content
 from services.scan_file import mycallback
 from services.scope_optimization import scope_opt
+from utils.error_handler import handle_global_exception
 from .helpers import (
     generate_response_file_path, process_optical_character_recognition, validate_file
 )
-from .processor import get_mime_type, create_tmp_file
+from .processor import create_tmp_file
 
 logger, memory_handler = get_logger("File Processing")
 
@@ -61,26 +62,22 @@ async def process_file_services(body: dict, file: UploadFile) -> JSONResponse | 
             which_callbacks=yara.CALLBACK_MATCHES,
         )
         if not matches:
-            raise HTTPException(
-                status_code=400, detail="File contains malware"
-            )
+            logger.info("File does not contain malware")
 
         # validation_action
-        actual_file_type = get_mime_type(file_name)
-        validate_file(file_extension, actual_file_type, allowed_filetypes=body.get("allowed_filetypes"))
+        actual_file_type = magic.Magic(mime=True).from_buffer(processed_file)
+        validate_file(file_extension, actual_file_type, body.get("allowed_filetypes"))
         # sanitization_action
         processed_file = await sanitize_file_content(processed_file, file_extension)
         # image_preprocessing_action
         processed_file = image_processing(processed_file)
         is_ndarray = isinstance(processed_file, np.ndarray)
         # ocr_processing_action
-        file_path, is_ndarray = await process_optical_character_recognition(
-            body, file_name, file_extension, processed_file, body.get("loglevel", "INFO")
-        )
+        file_path = await process_optical_character_recognition(file_name, file_extension, processed_file)
         # optimization_action
         processed_file = scope_opt(processed_file, file_extension, file_name)
         # renaming_action
-        processed_file = file_rename(processed_file, file_name, is_ndarray)
+        file_rename(processed_file, file_name, is_ndarray)
 
         # Prepare response
         if body.get("return_file", True):
@@ -100,4 +97,4 @@ async def process_file_services(body: dict, file: UploadFile) -> JSONResponse | 
                 ).model_dump()
             )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {str(e)}")
+        handle_global_exception(e)

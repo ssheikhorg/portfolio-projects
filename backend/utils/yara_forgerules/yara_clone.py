@@ -4,7 +4,7 @@ import yaml
 from utils.yara_forgerules import run_collector
 
 
-async def process_yara_rules(config_file: str) -> dict:
+async def create_yara_rules(config_file: str) -> bool:
     # Load YARA Forge config from YAML file
     with open(config_file, "r") as f:
         YARA_FORGE_CONFIG = yaml.safe_load(f)
@@ -26,5 +26,5 @@ async def process_yara_rules(config_file: str) -> dict:
     # check whether the file was created
     file_path = os.path.join(output_dir, output_file)
     if not os.path.exists(file_path):
-        return {"success": False}
-    return {"success": True}
+        return False
+    return True

@@ -163,7 +163,6 @@ async def process_OCR(
         file_extension: str,
         file_bytes: Optional[bytes] = None,
         contrast_image: Optional[np.ndarray] = None,
-        draw_debug: Optional[bool] = False,
 ):
     # Validate file extension
     mime_map = {
@@ -193,19 +192,19 @@ async def process_OCR(
             # Process PDF
             result = ocr_agent.ocr(tmp_file_path, cls=True)
             tmp_dir = tempfile.mkdtemp()
-            ocr_file_path = save_pdf_ocr(result, tmp_file_path, tmp_dir, draw_debug)
+            ocr_file_path = save_pdf_ocr(result, tmp_file_path, tmp_dir)
             return ocr_file_path
         else:
             result = ocr_agent.ocr(tmp_file_path, cls=True)
             ocr_file_path = save_unprocessed_image_ocr(
-                result, tmp_file_path, draw_debug
+                result, tmp_file_path
             )
             return ocr_file_path
     else:
         if contrast_image is not None:
             # Process image
             result = ocr_agent.ocr(contrast_image, cls=True)
-            ocr_file_path = save_image_ocr(result, contrast_image, draw_debug)
+            ocr_file_path = save_image_ocr(result, contrast_image)
             return ocr_file_path
         else:
             raise HTTPException(
