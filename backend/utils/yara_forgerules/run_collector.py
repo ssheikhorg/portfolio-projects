@@ -30,7 +30,7 @@ def safe_rmtree_contents(path, retries=5, delay=1):
     raise e
 
 
-def retrieve_yara_rule_sets(repo_staging_dir, yara_repos, logs):
+def retrieve_yara_rule_sets(repo_staging_dir, yara_repos):
     # The list of YARA rule sets of all repositories
     yara_rule_repo_sets = []
 
@@ -38,19 +38,12 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos, logs):
     if os.path.exists(repo_staging_dir):
         try:
             # Remove the existing repo directory and all its contents
-            logs("Info", f"Removing existing repo directory: {repo_staging_dir}")
             safe_rmtree_contents(repo_staging_dir)
         except Exception as e:
-            logs(
-                "Error",
-                f"Failed to remove existing repo directory: {repo_staging_dir}. Error: {e}",
-            )
             pass
 
     # Loop over the repositories
     for repo in yara_repos:
-        logs("Info", f"Processing repository: {repo['name']}")
-
         # Extract the owner and the repository name from the URL
         repo_url_parts = repo["url"].split("/")
         repo["owner"] = repo_url_parts[3]
@@ -60,32 +53,20 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos, logs):
         if not os.path.exists(
             os.path.join(repo_staging_dir, repo["owner"], repo["repo"])
         ):
-            logs("Info", f"Cloning repository: {repo['url']}")
-
             # Clone the repository
             repo_folder = os.path.join(repo_staging_dir, repo["owner"], repo["repo"])
             try:
                 repo["commit_hash"] = Repo.clone_from(
                     repo["url"], repo_folder, branch=repo["branch"]
                 ).head.commit.hexsha
-                logs("Info", f"Repository cloned successfully to: {repo_folder}")
             except Exception as e:
-                logs("Error", f"Failed to clone repository: {repo['url']}. Error: {e}")
                 continue  # Skip to the next repository if cloning fails
         else:
             # Get the latest commit hash
             repo_folder = os.path.join(repo_staging_dir, repo["owner"], repo["repo"])
             try:
                 repo["commit_hash"] = Repo(repo_folder).head.commit.hexsha
-                logs(
-                    "Info",
-                    f"Repository already exists at: {repo_folder}. Using latest commit.",
-                )
             except Exception as e:
-                logs(
-                    "Error",
-                    f"Failed to retrieve latest commit for repository: {repo['url']}. Error: {e}",
-                )
                 continue  # Skip to the next repository if getting commit fails
 
         # Walk through the extracted folders and find a LICENSE file
@@ -128,9 +109,7 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos, logs):
                         yara_file_content = f.read()
                         try:
                             # Get the rule file path in the repository
-                            relative_path = os.path.relpath(
-                                file_path, start=repo_folder
-                            )
+                            relative_path = os.path.relpath(file_path, start=repo_folder)
                             # Parse the YARA rules in the file
                             yara_parser = plyara.Plyara()
                             yara_rules = yara_parser.parse_string(yara_file_content)
@@ -140,10 +119,7 @@ def retrieve_yara_rule_sets(repo_staging_dir, yara_repos, logs):
                             }
                             yara_rule_sets.append(yara_rule_set)
                         except Exception as e:
-                            logs(
-                                "Error",
-                                f"Failed to parse YARA rules from file: {file_path}. Error: {e}",
-                            )
+                            continue
 
         # Append the YARA rule repository
         yara_rule_repo = {

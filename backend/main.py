@@ -1,3 +1,5 @@
+from typing import Callable
+
 import secure
 from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.exceptions import RequestValidationError
@@ -7,10 +9,19 @@ from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoin
 from starlette.requests import Request
 from starlette.responses import Response
 
+from utils.yara_forgerules.yara_clone import process_yara_rules
 from utils import error_handler
 from config import settings
 from api.process_file.routes import router as process_file_router  # noqa
 from api.core.issue_token_routes import router as issue_token_router  # noqa
+
+
+def create_start_app_handler(app):
+    async def start_app():
+        await process_yara_rules("/app/config_files/yara-forge-config.yml")
+        print("YARA rules processed successfully.")
+
+    return start_app
 
 
 def init_routers(app_: FastAPI) -> None:
@@ -86,6 +97,8 @@ def create_app() -> FastAPI:
     init_routers(app_)
     init_exception_handlers(app_)
 
+    """fastapi event handlers"""
+    app_.add_event_handler("startup", create_start_app_handler(app_))
     return app_
 
 

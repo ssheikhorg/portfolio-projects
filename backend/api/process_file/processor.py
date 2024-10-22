@@ -23,13 +23,6 @@ def is_image(file_bytes: bytes) -> bool:
         return False
 
 
-def save_file(file_bytes, file_name):
-    file_path = os.path.join(settings.clamav_scanned_dir, file_name)
-    with open(file_path, "wb") as f:
-        f.write(file_bytes)
-    return file_path
-
-
 def create_tmp_file(bytes, filename) -> str:
     dir = tempfile.mkdtemp()
     file_path = os.path.join(dir, filename)

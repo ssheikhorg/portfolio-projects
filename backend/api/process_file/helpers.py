@@ -12,10 +12,7 @@ from services.filenaming import file_rename
 from services.perform_ocr import process_OCR
 from services.pre_processing import image_processing
 from services.sanitize_file_uploads import sanitize_file_content
-from services.scan_file import clamav_scan, yara_scan
 from services.scope_optimization import scope_opt
-from services.validate_file import validate_file
-
 from .processor import create_tmp_file
 
 
@@ -32,60 +29,6 @@ async def process_optical_character_recognition(body: dict, file_name: str, file
     return result, False
 
 
-async def check_filesize_action(body, processed_file, file_extension, file_name, is_ndarray):
-    allowed_max_value = body.get("max_file_size", settings.max_file_size) * 1048576
-    check_filesize(processed_file, allowed_max_value)
-    return processed_file, None, is_ndarray
-
-
-async def malware_scan_action(body, processed_file, file_extension, file_name, is_ndarray):
-    try:
-        clamav_task = asyncio.to_thread(clamav_scan, processed_file, file_extension)
-        yara_task = asyncio.to_thread(yara_scan, file_name, processed_file, file_extension)
-        await asyncio.gather(clamav_task, yara_task)
-        return processed_file, None, is_ndarray
-    except Exception as e:
-        print(e)
-
-
-async def validation_action(body, processed_file, file_extension, file_name, is_ndarray):
-    actual_file_type = get_mime_type(file_name)
-    validate_file(file_extension, actual_file_type, allowed_filetypes=body.get("allowed_filetypes"))
-    return processed_file, None, is_ndarray
-
-
-async def sanitization_action(body, processed_file, file_extension, file_name, is_ndarray):
-    processed_file = await sanitize_file_content(processed_file, file_extension)
-    return processed_file, None, is_ndarray
-
-
-async def image_preprocessing_action(body, processed_file, file_extension, file_name, is_ndarray):
-    processed_file = image_processing(processed_file)
-    is_ndarray = isinstance(processed_file, np.ndarray)
-    return processed_file, None, is_ndarray
-
-
-async def ocr_processing_action(body, processed_file, file_extension, file_name, is_ndarray):
-    file_path, is_ndarray = await process_optical_character_recognition(
-        body, file_name, file_extension, processed_file, body.get("loglevel", "INFO")
-    )
-    return processed_file, file_path, is_ndarray
-
-
-async def named_entity_recognition_action(body, processed_file, file_extension, file_name, is_ndarray):
-    return processed_file, None, is_ndarray
-
-
-async def optimization_action(body, processed_file, file_extension, file_name, is_ndarray):
-    processed_file = scope_opt(processed_file, file_extension, file_name)
-    return processed_file, processed_file, is_ndarray
-
-
-async def renaming_action(body, processed_file, file_extension, file_name, is_ndarray):
-    processed_file = file_rename(processed_file, file_name, is_ndarray)
-    return processed_file, processed_file, is_ndarray
-
-
 def generate_response_file_path(processed_file, file_name: str, is_ndarray: bool) -> str:
     if is_ndarray:
         _, buffer = cv2.imencode(".png", processed_file)
@@ -93,9 +36,39 @@ def generate_response_file_path(processed_file, file_name: str, is_ndarray: bool
     return create_tmp_file(processed_file, f"processed_{file_name}")
 
 
-def check_filesize(file_bytes: bytes, max_file_size: int):
-    if len(file_bytes) > max_file_size:
+def validate_mime_type(actual_mime_type: str, expected_mime_type: str):
+    """
+    Validates MIME type of file against expected formats using content sniffing.
+    Raises HTTPException for unsupported or mismatched formats.
+    """
+    if actual_mime_type != expected_mime_type:
         raise HTTPException(
-            status_code=413, detail="File size exceeds the maximum limit"
+            status_code=700,
+            detail=f"MIME type mismatch: expected {expected_mime_type}, got {actual_mime_type}.",
         )
-    return True
+
+
+def validate_file(
+        file_extension: str, actual_mime_type: str, allowed_filetypes: str = None
+):
+    mime_map = {
+        "pdf": "application/pdf",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "jfif": "image/jpeg",
+        "pjpeg": "image/jpeg",
+        "png": "image/png",
+    }
+    if allowed_filetypes:
+        allowed_extensions = allowed_filetypes.split(",")
+    else:
+        allowed_extensions = settings.allowed_filetypes.split(",")
+
+    if file_extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=415,
+            detail="File type not allowed",
+        )
+
+    expected_mime_type = mime_map.get(file_extension, "application/octet-stream")
+    validate_mime_type(actual_mime_type, expected_mime_type)
