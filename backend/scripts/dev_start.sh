@@ -19,7 +19,6 @@ setup_cron() {
 
 # Start the FastAPI application
 start_app() {
-  # Run uvicorn for FastAPI, listening on all interfaces (0.0.0.0) and port 8000
   uvicorn main:app --reload --host 0.0.0.0 --port 8000
 }
 

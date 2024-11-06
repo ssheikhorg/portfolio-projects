@@ -3,7 +3,7 @@ FROM python:3.12.1-slim
 RUN apt-get update && apt-get -y install \
     curl unzip automake libtool make gcc pkg-config wget libmagic1 \
     libgl1 libglib2.0-0 libgomp1 cron git poppler-utils libmupdf-dev \
-    net-tools clamdscan clamav-daemon && \
+    net-tools clamdscan clamav-daemon dos2unix && \
     rm -rf /var/lib/apt/lists/*
 
 # Download and install YARA
@@ -28,7 +28,10 @@ RUN python -m pip install --upgrade pip \
 
 COPY . .
 
-# Ensure the script is executable
+# Convert all shell scripts to Unix format
+RUN find ./scripts -type f -name "*.sh" -exec dos2unix {} \;
+
+# Make the start script executable
 RUN chmod +x ./scripts/dev_start.sh
 
 # Expose the FastAPI port
