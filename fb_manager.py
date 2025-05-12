@@ -1,6 +1,8 @@
 import sys
+from base64 import b64encode
 from datetime import datetime, timedelta
 from os import getenv
+
 from dotenv import load_dotenv
 from typing import Dict, List, Optional, Any
 
@@ -8,11 +10,9 @@ from facebook_business.adobjects.page import Page
 from facebook_business.adobjects.user import User
 from facebook_business.api import FacebookAdsApi
 from facebook_business.adobjects.adaccount import AdAccount
-from facebook_business.adobjects.ad import Ad
-from facebook_business.adobjects.adcreative import AdCreative
-from facebook_business.adobjects.adset import AdSet
 from facebook_business.adobjects.lead import Lead
 from facebook_business.exceptions import FacebookRequestError
+from facebook_business.adobjects.adset import AdSet
 
 
 class FacebookAdsBase:
@@ -23,7 +23,7 @@ class FacebookAdsBase:
         "USER_TOKEN",
         "AD_ACCOUNT_ID",
         "FB_APP_ID",
-        "FB_APP_SECRET"
+        "FB_APP_SECRET",
     ]
 
     def __init__(self, config: Optional[Dict[str, str]] = None):
@@ -43,7 +43,7 @@ class FacebookAdsBase:
             "USER_TOKEN": getenv("FB_ACCESS_TOKEN"),
             "AD_ACCOUNT_ID": getenv("FB_AD_ACCOUNT_ID"),
             "FB_APP_ID": getenv("FB_APP_ID"),
-            "FB_APP_SECRET": getenv("FB_APP_SECRET")
+            "FB_APP_SECRET": getenv("FB_APP_SECRET"),
         }
 
     def _validate_config(self) -> None:
@@ -57,7 +57,7 @@ class FacebookAdsBase:
         FacebookAdsApi.init(
             app_id=self.config["FB_APP_ID"],
             app_secret=self.config["FB_APP_SECRET"],
-            access_token=self.config["USER_TOKEN"]
+            access_token=self.config["USER_TOKEN"],
         )
 
     def get_ad_account(self) -> AdAccount:
@@ -67,10 +67,14 @@ class FacebookAdsBase:
     def _get_page_access_token(self) -> str:
         """Retrieve page access token for the configured page"""
         user = User(f"me")
-        accounts = user.get_accounts(fields=['access_token', 'name', 'id'])
+        accounts = user.get_accounts(fields=["access_token", "name", "id"])
         return next(
-            (acc['access_token'] for acc in accounts if acc['id'] == self.config["PAGE_ID"]),
-            None
+            (
+                acc["access_token"]
+                for acc in accounts
+                if acc["id"] == self.config["PAGE_ID"]
+            ),
+            None,
         )
 
 
@@ -88,23 +92,30 @@ class FacebookLeadRetriever(FacebookAdsBase):
             FacebookAdsApi.init(
                 self.config["FB_APP_ID"],
                 self.config["FB_APP_SECRET"],
-                page_access_token
+                page_access_token,
             )
 
-            since_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+            since_date = (datetime.now() - timedelta(days=days_back)).strftime(
+                "%Y-%m-%d"
+            )
             page = Page(self.config["PAGE_ID"])
             forms = page.get_lead_gen_forms()
 
             leads_data = []
             for form in forms:
-                leads = Lead(form['id']).get_leads(params={'since': since_date})
+                leads = Lead(form["id"]).get_leads(params={"since": since_date})
                 for lead in leads:
-                    leads_data.append({
-                        'id': lead['id'],
-                        'created_time': lead['created_time'],
-                        'form_name': form.get('name'),
-                        'data': {f['name']: f['values'][0] for f in lead.get('field_data', [])}
-                    })
+                    leads_data.append(
+                        {
+                            "id": lead["id"],
+                            "created_time": lead["created_time"],
+                            "form_name": form.get("name"),
+                            "data": {
+                                f["name"]: f["values"][0]
+                                for f in lead.get("field_data", [])
+                            },
+                        }
+                    )
 
             return leads_data
 
@@ -121,24 +132,22 @@ class FacebookAdCreator(FacebookAdsBase):
 
     def __init__(self, config: Optional[Dict[str, str]] = None):
         super().__init__(config)
-        self._image_cache = None
 
-    def get_latest_image(self) -> Dict[str, Any]:
-        """Fetch most recent image in ad account with caching"""
-        if self._image_cache:
-            return self._image_cache
+    def _upload_image_file(
+        self, account: AdAccount, image_path: str | None = None
+    ) -> Dict[str, str]:
+        if not image_path:
+            image_path = "test-ad-img.jpeg"
 
-        fields = ["hash", "url", "created_time", "name"]
-        account = self.get_ad_account()
-        images = account.get_ad_images(fields=fields, params={"limit": 50})
+        with open(image_path, "rb") as image_file:
+            image_bytes = image_file.read()
 
-        if not images:
-            raise RuntimeError("No images found in the ad account - upload one first.")
-
-        latest = max(images, key=lambda img: img.get("created_time", ""))
-        print(f"Using image: {latest.get('name')} (hash={latest['hash']})")
-        self._image_cache = latest
-        return latest
+        params = {
+            "filename": image_path.split("/")[-1],
+            "bytes": b64encode(image_bytes).decode("utf-8"),
+        }
+        image = account.create_ad_image(params=params)
+        return {"hash": image["hash"], "url": image["url"], "id": image["id"]}
 
     def create_message_ad(self) -> Optional[Dict[str, str]]:
         """Create message engagement ad with multiple text variations"""
@@ -147,120 +156,135 @@ class FacebookAdCreator(FacebookAdsBase):
             page_id = self.config["PAGE_ID"]
 
             campaign = self._create_campaign(account)
-            adset = self._create_ad_set(account, campaign.get_id(), page_id)
+            campaign_id = campaign.get_id()
+            adset = self._create_ad_set(account, campaign_id, page_id)
             creative = self._create_ad_creative(account, page_id)
+            print("Variations:", creative.api_get(fields=["asset_feed_spec"]))
+
             ad = self._create_ad(account, adset.get_id(), creative.get_id())
 
             return {
                 "campaign_id": campaign.get_id(),
                 "adset_id": adset.get_id(),
                 "ad_id": ad.get_id(),
-                "creative_id": creative.get_id()
+                "creative_id": creative.get_id(),
             }
-
-        except FacebookRequestError as e:
-            print(f"Facebook API Error creating ad: {e.api_error_message()}")
-            return None
         except Exception as e:
             print(f"Error creating ad: {str(e)}")
             return None
 
     def _create_campaign(self, account: AdAccount) -> Any:
-        """Create campaign with MESSAGES objective"""
-        return account.create_campaign(params={
-            "name": "Message Engagement Campaign",
-            "objective": "OUTCOME_TRAFFIC",
-            "status": "PAUSED",
-            "special_ad_categories": [],
-            "daily_budget": 2000,
-            "campaign_budget_optimization_toggling_behavior": "ENABLED",
-        })
+        """Create campaign optimized for lead generation"""
+        return account.create_campaign(
+            params={
+                "name": "Lead Generation Campaign with Variations",
+                "objective": "OUTCOME_LEADS",
+                "status": "PAUSED",
+                "special_ad_categories": [],
+                "daily_budget": 2000,  # $20 daily budget
+                "campaign_budget_optimization_toggling_behavior": "ENABLED",
+            }
+        )
 
     def _create_ad_set(self, account: AdAccount, campaign_id: str, page_id: str) -> Any:
-        """Create optimized ad set for message engagement"""
-        adset_params = {
-            "name": "Message Engagement Ad Set",
-            "campaign_id": campaign_id,
-            "status": "PAUSED",
-            "daily_budget": "2000",
-            "billing_event": "IMPRESSIONS",
-            "optimization_goal": "REPLIES",
-            "bid_amount": "1000",
-            "targeting": {
-                "geo_locations": {"countries": ["US"]},
-                "age_min": 25,
-                "age_max": 65,
-                "facebook_positions": ["feed"]
-            },
-            "promoted_object": {"page_id": page_id},
-            "messenger_welcome_message": "Thanks for contacting us! How can we help you today?",
-            "dynamic_creative": True
+        """Create lead gen ad set with proper budget structure"""
+        targeting = {
+            "geo_locations": {"countries": ["US", "GB"]},
+            "age_min": 25,
+            "age_max": 65,
+            "publisher_platforms": ["facebook"],
+            "facebook_positions": ["feed", "marketplace"],
+            "locales": [6, 24],  # English (US/UK)
         }
 
-        try:
-            if account.get_billing_info().get('status') == 'ACTIVE':
-                adset_params["advantage_audience"] = True
-        except:
-            pass  # Skip if we can't check billing status
-
-        return account.create_ad_set(params=adset_params)
+        params = {
+            "name": "Lead Gen AdSet with Variations",
+            "campaign_id": campaign_id,
+            "status": "PAUSED",
+            "billing_event": "IMPRESSIONS",
+            "optimization_goal": AdSet.OptimizationGoal.lead_generation,
+            "bid_amount": "1000",  # $10 bid cap
+            "targeting": targeting,
+            "promoted_object": {"page_id": page_id},
+            "dynamic_creative": True,
+            "start_time": (datetime.now() + timedelta(days=1)).strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            ),
+            "end_time": (datetime.now() + timedelta(days=30)).strftime(
+                "%Y-%m-%dT%H:%M:%S"
+            ),
+        }
+        return account.create_ad_set(params=params)
 
     def _create_ad_creative(self, account: AdAccount, page_id: str) -> Any:
-        """Create ad creative with multiple text variations"""
-        img = self.get_latest_image()
+        """Create lead ad creative with multiple variations"""
+        img = self._upload_image_file(account)
 
-        messages = [
-            "Have questions about our services? Message us now!",
-            "Get instant answers to your questions. Just send a message!",
-            "Need help? Our team is ready to chat with you.",
-            "Message us for personalized assistance with your needs.",
-            "Quick responses guaranteed. Reach out to our team today!",
+        # Variation sets (now as class constants for easy maintenance)
+        MESSAGES = [
+            "Get exclusive offers - sign up today!",
+            "Limited time offer - claim your discount now",
+            "We're hiring! Apply through this form",
+            "Free consultation - get started today",
+            "Download our premium guide instantly",
         ]
-        titles = [
-            "Chat With Us",
-            "Message Our Team",
-            "Get Answers Now",
-            "Personalized Support",
-            "Instant Assistance",
+        HEADLINES = [
+            "Chat With Us", "Message Our Team", "Get Answers Now",
+            "Personalized Support", "Instant Assistance"
         ]
-        descriptions = [
+        DESCRIPTIONS = [
             "We respond within minutes to all customer inquiries",
             "Our expert team is standing by to help you",
             "Fast and friendly service through Messenger",
             "No waiting on hold - just message us directly",
-            "Connect with our specialists for immediate help",
+            "Connect with our specialists for immediate help"
         ]
 
-        return account.create_ad_creative(params={
-            "name": "Message Engagement Creative - Multiple Text Options",
+        creative_params = {
+            "name": f"Lead Ad Variants {datetime.now().date()}",
             "object_story_spec": {
                 "page_id": page_id,
-                "instagram_actor_id": page_id,
-                "link_data": {
+                "lead_gen_data": {
+                    "page_id": page_id,
                     "image_hash": img["hash"],
-                    "link": "https://m.me/" + page_id,
-                    "message": messages[0],
-                    "name": titles[0],
-                    "description": descriptions[0],
-                    "call_to_action": {"type": "MESSAGE_PAGE"}
-                }
+                    "title": HEADLINES[0],  # Use first headline as default
+                    "message": MESSAGES[0],
+                    "call_to_action": {"type": "SIGN_UP"},
+                    "description": DESCRIPTIONS[0],
+                },
             },
-            "dynamic_creative_spec": {
-                "message": messages,
-                "link": ["https://m.me/" + page_id],
-                "name": titles,
-                "description": descriptions
-            }
-        })
+            "asset_feed_spec": {
+                "ad_formats": ["SINGLE_IMAGE"],
+                "bodies": [{"text": msg} for msg in MESSAGES],
+                "headlines": [{"text": msg} for msg in HEADLINES],
+                "descriptions": [{"text": msg} for msg in DESCRIPTIONS],
+                "images": [{"hash": img["hash"]}],
+                "call_to_action_types": ["SIGN_UP"],
+            },
+        }
+
+        try:
+            account.create_ad_creative(params={**creative_params, "validate_only": True})
+            return account.create_ad_creative(params=creative_params)
+        except FacebookRequestError as e:
+            print(f"Creative creation failed: {e.api_error_message()}")
+            raise
 
     def _create_ad(self, account: AdAccount, adset_id: str, creative_id: str) -> Any:
         """Create the final ad"""
-        return account.create_ad(params={
-            "name": "Message Engagement Ad - Multiple Text Variations",
-            "adset_id": adset_id,
-            "status": "PAUSED",
-            "creative": {"creative_id": creative_id}
-        })
+        adset = AdSet(adset_id).api_get(fields=["status"])
+        if adset["status"] != "PAUSED":
+            print(f"Warning: AdSet status is {adset['status']}")
+
+        return account.create_ad(
+            params={
+                "name": f"Lead Ad {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+                "adset_id": adset_id,
+                "status": "PAUSED",
+                "creative": {"creative_id": creative_id},
+                "access_token": self.config["USER_TOKEN"],
+            }
+        )
 
 
 class FacebookAdsManager:
@@ -278,17 +302,42 @@ class FacebookAdsManager:
         for lead in leads:
             print(f"\nLead ID: {lead['id']}")
             print(f"Date: {lead['created_time']}")
-            for field, value in lead['data'].items():
+            for field, value in lead["data"].items():
                 print(f"{field}: {value}")
 
     def create_and_display_message_ad(self) -> None:
         """Create and display message engagement ad"""
+
         print("\n2. Creating Message Engagement Ad...")
         ad_result = self.ad_creator.create_message_ad()
-        if ad_result:
-            print("\nAd Creation Successful!")
-            print("Campaign ID:", ad_result["campaign_id"])
-            print("Ad Set ID:", ad_result["adset_id"])
-            print("Ad ID:", ad_result["ad_id"])
-            print("Creative ID:", ad_result["creative_id"])
-            print("Check Ads Manager to see the five variations for each text field.")
+        if not ad_result:
+            print("Ad creation failed.")
+            return
+
+        print("\nAd Creation Successful!")
+        print("Campaign ID:", ad_result["campaign_id"])
+        print("Ad Set ID:", ad_result["adset_id"])
+        print("Ad ID:", ad_result["ad_id"])
+        print("Creative ID:", ad_result["creative_id"])
+        print("Check Ads Manager to see the five variations for each text field.")
+
+
+def main():
+    try:
+        manager = FacebookAdsManager()
+
+        # Retrieve and display leads
+        manager.retrieve_and_display_leads()
+
+        # Create and display message ad
+        manager.create_and_display_message_ad()
+    except ValueError as e:
+        print(f"Configuration error: {str(e)}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Unexpected error: {str(e)}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
