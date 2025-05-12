@@ -1,0 +1,10 @@
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.idea
+
+# ignore .env
+.env
