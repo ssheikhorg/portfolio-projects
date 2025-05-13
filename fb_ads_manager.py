@@ -1,3 +1,4 @@
+import random
 import sys
 from base64 import b64encode
 from datetime import datetime, timedelta
@@ -13,6 +14,7 @@ from facebook_business.adobjects.adaccount import AdAccount
 from facebook_business.adobjects.lead import Lead
 from facebook_business.exceptions import FacebookRequestError
 from facebook_business.adobjects.adset import AdSet
+from facebook_business.adobjects.leadgenform import LeadgenForm
 
 
 class FacebookAdsManager:
@@ -51,11 +53,15 @@ class FacebookAdsManager:
 
     def _init_api(self) -> None:
         """Initialize the Facebook Ads API"""
-        FacebookAdsApi.init(
-            app_id=self.config["FB_APP_ID"],
-            app_secret=self.config["FB_APP_SECRET"],
-            access_token=self.config["USER_TOKEN"],
-        )
+        try:
+            FacebookAdsApi.init(
+                app_id=self.config["FB_APP_ID"],
+                app_secret=self.config["FB_APP_SECRET"],
+                access_token=self.config["USER_TOKEN"],
+            )
+            print("Facebook Ads API initialized successfully.")
+        except Exception as e:
+            raise ValueError(f"Failed to initialize Facebook Ads API: {str(e)}")
 
     def _get_page_access_token(self) -> str:
         """Retrieve page access token for the configured page"""
@@ -119,7 +125,7 @@ class FacebookAdsManager:
             "bid_amount": "1000",  # $10 bid cap
             "targeting": targeting,
             "promoted_object": {"page_id": page_id},
-            "dynamic_creative": True,
+            "is_dynamic_creative": False,
             "start_time": (datetime.now() + timedelta(days=1)).strftime(
                 "%Y-%m-%dT%H:%M:%S"
             ),
@@ -155,34 +161,29 @@ class FacebookAdsManager:
             "No waiting on hold - just message us directly",
             "Connect with our specialists for immediate help",
         ]
+        LANDING_PAGE_URL = "https://concretedesignpro.com/"
 
         creative_params = {
             "name": f"Lead Ad Variants {datetime.now().date()}",
             "object_story_spec": {
                 "page_id": page_id,
-                "lead_gen_data": {
-                    "page_id": page_id,
+                "link_data": {
                     "image_hash": img["hash"],
-                    "title": HEADLINES[0],  # Use first headline as default
-                    "message": MESSAGES[0],
-                    "call_to_action": {"type": "SIGN_UP"},
-                    "description": DESCRIPTIONS[0],
-                },
-            },
-            "asset_feed_spec": {
-                "ad_formats": ["SINGLE_IMAGE"],
-                "bodies": [{"text": msg} for msg in MESSAGES],
-                "headlines": [{"text": msg} for msg in HEADLINES],
-                "descriptions": [{"text": msg} for msg in DESCRIPTIONS],
-                "images": [{"hash": img["hash"]}],
-                "call_to_action_types": ["SIGN_UP"],
+                    "name": random.choice(HEADLINES),
+                    "message": random.choice(MESSAGES),
+                    "call_to_action": {"type": "SIGN_UP", "value": {"link": LANDING_PAGE_URL}},
+                    "description": random.choice(DESCRIPTIONS),
+                    "link": LANDING_PAGE_URL,
+                }
             },
         }
 
         try:
+            print("Validating creative...")
             account.create_ad_creative(
                 params={**creative_params, "validate_only": True}
             )
+            print("Creating creative...")
             return account.create_ad_creative(params=creative_params)
         except FacebookRequestError as e:
             print(f"Creative creation failed: {e.api_error_message()}")
@@ -190,10 +191,15 @@ class FacebookAdsManager:
 
     def _create_ad(self, account: AdAccount, adset_id: str, creative_id: str) -> Any:
         """Create the final ad"""
-        adset = AdSet(adset_id).api_get(fields=["status"])
+        adset = AdSet(adset_id).api_get(fields=["status", "is_dynamic_creative"])
         if adset["status"] != "PAUSED":
             print(f"Warning: AdSet status is {adset['status']}")
+        if adset.get("is_dynamic_creative"):
+            raise ValueError(
+                "AdSet must not be dynamic creative for this operation."
+            )
 
+        print("Creating ad...")
         return account.create_ad(
             params={
                 "name": f"Lead Ad {datetime.now().strftime('%Y-%m-%d %H:%M')}",
@@ -209,13 +215,13 @@ class FacebookAdsManager:
         return AdAccount(f"act_{self.config['AD_ACCOUNT_ID']}")
 
     def get_leads(self, days_back: int = 7) -> List[Dict[str, Any]]:
-        """Retrieve leads from lead gen forms"""
+        """Retrieve leads from lead gen forms within the specified time range"""
         try:
             page_access_token = self._get_page_access_token()
             if not page_access_token:
-                raise Exception("Could not get page access token")
+                raise ValueError("Could not get page access token")
 
-            # Reinitialize with page token
+            # Reinitialize API with page access token
             FacebookAdsApi.init(
                 self.config["FB_APP_ID"],
                 self.config["FB_APP_SECRET"],
@@ -226,23 +232,48 @@ class FacebookAdsManager:
                 "%Y-%m-%d"
             )
             page = Page(self.config["PAGE_ID"])
-            forms = page.get_lead_gen_forms()
+            forms = page.get_lead_gen_forms(fields=["id", "name"])
+
+            if not forms:
+                print("No lead generation forms found for the page.")
+                return []
+
+            print("Available lead gen forms:")
+            for form in forms:
+                print(f"Form ID: {form['id']}, Name: {form.get('name', 'Unnamed')}")
 
             leads_data = []
             for form in forms:
-                leads = Lead(form["id"]).get_leads(params={"since": since_date})
-                for lead in leads:
-                    leads_data.append(
-                        {
-                            "id": lead["id"],
-                            "created_time": lead["created_time"],
-                            "form_name": form.get("name"),
-                            "data": {
-                                f["name"]: f["values"][0]
-                                for f in lead.get("field_data", [])
-                            },
+                form_obj = LeadgenForm(form["id"])
+                try:
+                    leads = form_obj.get_leads(
+                        params={
+                            "filtering": [
+                                {
+                                    "field": "time_created",
+                                    "operator": "GREATER_THAN",
+                                    "value": since_date,
+                                }
+                            ],
+                            "fields": ["id", "created_time", "field_data"],
                         }
                     )
+                    print(f"Found {len(leads)} leads for form {form['id']}")
+                    for lead in leads:
+                        leads_data.append(
+                            {
+                                "id": lead["id"],
+                                "created_time": lead["created_time"],
+                                "form_name": form.get("name", "Unnamed"),
+                                "data": {
+                                    f["name"]: f["values"][0]
+                                    for f in lead.get("field_data", [])
+                                },
+                            }
+                        )
+                except FacebookRequestError as e:
+                    print(f"Error retrieving leads for form {form['id']}: {e.api_error_message()}")
+                    continue
 
             return leads_data
 
@@ -252,6 +283,51 @@ class FacebookAdsManager:
         except Exception as e:
             print(f"Error retrieving leads: {str(e)}")
             return []
+
+    # def get_leads(self, days_back: int = 7) -> List[Dict[str, Any]]:
+    #     """Retrieve leads from lead gen forms"""
+    #     try:
+    #         page_access_token = self._get_page_access_token()
+    #         if not page_access_token:
+    #             raise Exception("Could not get page access token")
+    #
+    #         # Reinitialize with page token
+    #         FacebookAdsApi.init(
+    #             self.config["FB_APP_ID"],
+    #             self.config["FB_APP_SECRET"],
+    #             page_access_token,
+    #         )
+    #
+    #         since_date = (datetime.now() - timedelta(days=days_back)).strftime(
+    #             "%Y-%m-%d"
+    #         )
+    #         page = Page(self.config["PAGE_ID"])
+    #         forms = page.get_lead_gen_forms()
+    #
+    #         leads_data = []
+    #         for form in forms:
+    #             leads = Lead(form["id"]).get(params={"since": since_date})
+    #             for lead in leads:
+    #                 leads_data.append(
+    #                     {
+    #                         "id": lead["id"],
+    #                         "created_time": lead["created_time"],
+    #                         "form_name": form.get("name"),
+    #                         "data": {
+    #                             f["name"]: f["values"][0]
+    #                             for f in lead.get("field_data", [])
+    #                         },
+    #                     }
+    #                 )
+    #
+    #         return leads_data
+    #
+    #     except FacebookRequestError as e:
+    #         print(f"Facebook API Error retrieving leads: {e.api_error_message()}")
+    #         return []
+    #     except Exception as e:
+    #         print(f"Error retrieving leads: {str(e)}")
+    #         return []
 
     def create_message_ad(self) -> Optional[Dict[str, str]]:
         """Create message engagement ad with multiple text variations"""
@@ -263,10 +339,7 @@ class FacebookAdsManager:
             campaign_id = campaign.get_id()
             adset = self._create_ad_set(account, campaign_id, page_id)
             creative = self._create_ad_creative(account, page_id)
-            print("Variations:", creative.api_get(fields=["asset_feed_spec"]))
-
             ad = self._create_ad(account, adset.get_id(), creative.get_id())
-
             return {
                 "campaign_id": campaign.get_id(),
                 "adset_id": adset.get_id(),
@@ -309,7 +382,7 @@ def main():
     """Main execution flow"""
     try:
         manager = FacebookAdsManager()
-        run_lead_retrieval(manager)
+        run_lead_retrieval(manager, days_back=7)
         run_ad_creation(manager)
     except ValueError as e:
         print(f"Configuration error: {str(e)}")
