@@ -5,13 +5,12 @@ from datetime import datetime, timedelta
 from os import getenv
 
 from dotenv import load_dotenv
-from typing import Dict, List, Optional, Any
+from typing import Optional, Any
 
 from facebook_business.adobjects.page import Page
 from facebook_business.adobjects.user import User
 from facebook_business.api import FacebookAdsApi
 from facebook_business.adobjects.adaccount import AdAccount
-from facebook_business.adobjects.lead import Lead
 from facebook_business.exceptions import FacebookRequestError
 from facebook_business.adobjects.adset import AdSet
 from facebook_business.adobjects.leadgenform import LeadgenForm
@@ -74,7 +73,7 @@ class FacebookAdsManager:
 
     def _upload_image_file(
         self, account: AdAccount, image_path: str | None = None
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         if not image_path:
             image_path = "test-ad-img.jpeg"
 
@@ -167,10 +166,13 @@ class FacebookAdsManager:
                     "image_hash": img["hash"],
                     "name": random.choice(HEADLINES),
                     "message": random.choice(MESSAGES),
-                    "call_to_action": {"type": "SIGN_UP", "value": {"link": LANDING_PAGE_URL}},
+                    "call_to_action": {
+                        "type": "SIGN_UP",
+                        "value": {"link": LANDING_PAGE_URL},
+                    },
                     "description": random.choice(DESCRIPTIONS),
                     "link": LANDING_PAGE_URL,
-                }
+                },
             },
         }
 
@@ -212,8 +214,8 @@ class FacebookAdsManager:
         """Get the AdAccount instance"""
         return AdAccount(f"act_{self.config['AD_ACCOUNT_ID']}")
 
-    def get_leads(self, days_back: int = 7) -> List[Dict[str, Any]]:
-        """Retrieve leads from lead gen forms within the specified time range"""
+    def get_leads(self, days_back: int = 7) -> list[dict[str, Any]]:
+        """Retrieve leads from lead gen forms with proper parameter handling"""
         try:
             page_access_token = self._get_page_access_token()
             if not page_access_token:
@@ -230,47 +232,60 @@ class FacebookAdsManager:
                 "%Y-%m-%d"
             )
             page = Page(self.config["PAGE_ID"])
-            forms = page.get_lead_gen_forms(fields=["id", "name"])
 
-            if not forms:
+            # First get all forms with their names
+            forms_with_names = [
+                {"id": form["id"], "name": form.get("name", "Unnamed")}
+                for form in page.get_lead_gen_forms(fields=["id", "name"])
+            ]
+
+            if not forms_with_names:
                 print("No lead generation forms found for the page.")
                 return []
 
             print("Available lead gen forms:")
-            for form in forms:
-                print(f"Form ID: {form['id']}, Name: {form.get('name', 'Unnamed')}")
+            for form in forms_with_names:
+                print(f"Form ID: {form['id']}, Name: {form['name']}")
 
             leads_data = []
-            for form in forms:
-                form_obj = LeadgenForm(form["id"])
+            for form in forms_with_names:
                 try:
-                    leads = form_obj.get_leads(
-                        params={
-                            "filtering": [
-                                {
-                                    "field": "time_created",
-                                    "operator": "GREATER_THAN",
-                                    "value": since_date,
-                                }
-                            ],
-                            "fields": ["id", "created_time", "field_data"],
-                        }
-                    )
+                    # Prepare params dictionary with filtering
+                    params = {
+                        "fields": "id,created_time,field_data,is_test_lead",
+                        "filtering": [
+                            {
+                                "field": "time_created",
+                                "operator": "GREATER_THAN",
+                                "value": since_date,
+                            }
+                        ],
+                    }
+
+                    # Get leads for this form using params
+                    leads = LeadgenForm(form["id"]).get_leads(params=params)
+
                     print(f"Found {len(leads)} leads for form {form['id']}")
+
+                    # Process leads while preserving form name
                     for lead in leads:
                         leads_data.append(
                             {
                                 "id": lead["id"],
                                 "created_time": lead["created_time"],
-                                "form_name": form.get("name", "Unnamed"),
+                                "form_name": form["name"],
+                                "is_test_lead": lead.get("is_test_lead", False),
                                 "data": {
                                     f["name"]: f["values"][0]
                                     for f in lead.get("field_data", [])
                                 },
                             }
                         )
+
                 except FacebookRequestError as e:
-                    print(f"Error retrieving leads for form {form['id']}: {e.api_error_message()}")
+                    print(
+                        f"Error retrieving leads for form {form['id']}: {e.api_error_message()}"
+                    )
                     continue
 
             return leads_data
@@ -282,7 +297,7 @@ class FacebookAdsManager:
             print(f"Error retrieving leads: {str(e)}")
             return []
 
-    def create_message_ad(self) -> Optional[Dict[str, str]]:
+    def create_message_ad(self) -> Optional[dict[str, str]]:
         """Create message engagement ad with multiple text variations"""
         try:
             account = self.get_ad_account()
@@ -335,7 +350,7 @@ def main():
     """Main execution flow"""
     try:
         manager = FacebookAdsManager()
-        # run_ad_creation(manager)
+        run_ad_creation(manager)
         run_lead_retrieval(manager, days_back=7)
     except ValueError as e:
         print(f"Configuration error: {str(e)}")
