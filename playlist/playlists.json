@@ -1,0 +1,51 @@
+[
+    {
+        "name": "Morning Routine",
+        "start_time": "07:00",
+        "days": "0,1,2,3,4,5",
+        "folder": "Daily",
+        "duration": "1:00"
+    },
+    {
+        "name": "Work Session 1",
+        "start_time": "09:00",
+        "days": "1,2,3,4,5",
+        "folder": "Work",
+        "duration": "3:00"
+    },
+    {
+        "name": "Lunch Break",
+        "start_time": "12:00",
+        "days": "1,2,3,4,5",
+        "folder": "Daily",
+        "duration": "1:00"
+    },
+    {
+        "name": "Work Session 2",
+        "start_time": "13:00",
+        "days": "1,2,3,4,5",
+        "folder": "Work",
+        "duration": "4:00"
+    },
+    {
+        "name": "Evening Exercise",
+        "start_time": "18:00",
+        "days": "0,1,2,3,4,5",
+        "folder": "Fitness",
+        "duration": "1:30"
+    },
+    {
+        "name": "Dinner",
+        "start_time": "19:30",
+        "days": "0,1,2,3,4,5,6",
+        "folder": "Daily",
+        "duration": "1:00"
+    },
+    {
+        "name": "Leisure Time",
+        "start_time": "20:30",
+        "days": "0,1,2,3,4,5,6",
+        "folder": "Relaxation",
+        "duration": "2:00"
+    }
+]

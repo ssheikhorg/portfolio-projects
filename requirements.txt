@@ -1,0 +1,9 @@
+selenium
+fastapi
+# PyQt5
+requests
+httpx
+
+pyotp
+pydantic
+python-ffmpeg-video-streaming

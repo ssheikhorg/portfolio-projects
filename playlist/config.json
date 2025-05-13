@@ -1,0 +1,76 @@
+[
+  {
+    "playlist" : "1-Day",
+    "time" : {
+      "h" : 3,
+      "m" : 0
+    },
+    "weekday" : [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "duration" : {
+      "h" : 13,
+      "m" : 45
+    }
+  },
+  {
+    "playlist" : "2-Early",
+    "time" : {
+      "h" : 16,
+      "m" : 45
+    },
+    "weekday" : [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "duration" : {
+      "h" : 2,
+      "m" : 15
+    }
+  },
+  {
+    "playlist" : "3-Main",
+    "time" : {
+      "h" : 19,
+      "m" : 0
+    },
+    "weekday" : [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "duration" : {
+      "h" : 8,
+      "m" : 0
+    }
+  },
+  {
+    "playlist" : "4-Friday Happy Hour",
+    "time" : {
+      "h" : 17,
+      "m" : 0
+    },
+    "weekday" : [
+      5
+    ],
+    "duration" : {
+      "h" : 2,
+      "m" : 0
+    }
+  }
+]
