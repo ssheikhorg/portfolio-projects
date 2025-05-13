@@ -7,3 +7,5 @@ httpx
 pyotp
 pydantic
 python-ffmpeg-video-streaming
+facebook-business
+dotenv
