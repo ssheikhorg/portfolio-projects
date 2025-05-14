@@ -91,7 +91,7 @@ class FacebookAdsManager:
         """Create campaign optimized for lead generation"""
         return account.create_campaign(
             params={
-                "name": "Lead Generation Campaign with Variations",
+                "name": f"Lead Generation Campaign {datetime.now().strftime('%Y-%m-%d %H:%M')}",
                 "objective": "OUTCOME_LEADS",
                 "status": "PAUSED",
                 "special_ad_categories": [],
@@ -112,7 +112,7 @@ class FacebookAdsManager:
         }
 
         params = {
-            "name": "Lead Gen AdSet with Variations",
+            "name": f"Lead Gen AdSet {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             "campaign_id": campaign_id,
             "status": "PAUSED",
             "billing_event": "IMPRESSIONS",
