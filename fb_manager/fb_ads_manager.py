@@ -132,34 +132,41 @@ class FacebookAdsManager:
         """Create message engagement creative"""
         img = self.uploadImage()
 
-        MESSAGES = [
+        MESSAGE_VARIANTS = [
             "Message us for quick answers!",
             "Chat with our team now",
             "Need help? Send us a message",
             "We're here to help - message us",
             "Get instant support via Messenger",
         ]
-        HEADLINES = [
+        HEADLINE_VARIANTS = [
             "Chat With Us",
             "Message Our Team",
             "Get Answers Now",
             "Personalized Support",
             "Instant Assistance",
         ]
-
+        DESCRIPTION_VARIANTS = [
+            "We respond within minutes to all customer inquiries",
+            "Our expert team is standing by to help you",
+            "Fast and friendly service through Messenger",
+            "No waiting on hold - just message us directly",
+            "Connect with our specialists for immediate help",
+        ]
         creative_params = {
             "name": f"Message Ad {datetime.now().date()}",
             "object_story_spec": {
                 "page_id": self.config["PAGE_ID"],
                 "link_data": {
                     "image_hash": img["hash"],
-                    "name": random.choice(HEADLINES),
-                    "message": random.choice(MESSAGES),
+                    "name": HEADLINE_VARIANTS[0],
+                    "message": MESSAGE_VARIANTS[0],
                     "call_to_action": {
                         "type": "MESSAGE_PAGE",
                         "value": {"link": f"https://m.me/{self.config['PAGE_ID']}"},
                     },
                     "link": f"https://m.me/{self.config['PAGE_ID']}",
+                    "description": DESCRIPTION_VARIANTS[0],
                 },
             },
         }
@@ -189,9 +196,8 @@ class FacebookAdsManager:
             "name": f"Message AdSet {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             "campaign_id": campaign_id,
             "status": "PAUSED",
-            "billing_event": "IMPRESSIONS",
-            "optimization_goal": "IMPRESSIONS",
-            # "optimization_goal": AdSet.OptimizationGoal.conversations,
+            "billing_event": AdSet.OptimizationGoal.impressions,
+            "optimization_goal": AdSet.OptimizationGoal.impressions,
             "bid_amount": "1000",  # $10 bid cap
             "targeting": targeting,
             "promoted_object": {"page_id": self.config["PAGE_ID"]},
@@ -252,21 +258,21 @@ class FacebookAdsManager:
         """Create lead ad creative with multiple variations"""
         img = self.uploadImage()
 
-        MESSAGES = [
+        MESSAGE_VARIANTS = [
             "Get exclusive offers - sign up today!",
             "Limited time offer - claim your discount now",
             "We're hiring! Apply through this form",
             "Free consultation - get started today",
             "Download our premium guide instantly",
         ]
-        HEADLINES = [
+        HEADLINE_VARIANTS = [
             "Chat With Us",
             "Message Our Team",
             "Get Answers Now",
             "Personalized Support",
             "Instant Assistance",
         ]
-        DESCRIPTIONS = [
+        DESCRIPTION_VARIANTS = [
             "We respond within minutes to all customer inquiries",
             "Our expert team is standing by to help you",
             "Fast and friendly service through Messenger",
@@ -281,13 +287,13 @@ class FacebookAdsManager:
                 "page_id": self.config["PAGE_ID"],
                 "link_data": {
                     "image_hash": img["hash"],
-                    "name": random.choice(HEADLINES),
-                    "message": random.choice(MESSAGES),
+                    "name": HEADLINE_VARIANTS[0],
+                    "message": MESSAGE_VARIANTS[0],
                     "call_to_action": {
                         "type": "SIGN_UP",
                         "value": {"link": LANDING_PAGE_URL},
                     },
-                    "description": random.choice(DESCRIPTIONS),
+                    "description": DESCRIPTION_VARIANTS[0],
                     "link": LANDING_PAGE_URL,
                 },
             },
