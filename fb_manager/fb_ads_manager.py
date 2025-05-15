@@ -132,41 +132,55 @@ class FacebookAdsManager:
         """Create message engagement creative"""
         img = self.uploadImage()
 
-        MESSAGE_VARIANTS = [
-            "Message us for quick answers!",
-            "Chat with our team now",
-            "Need help? Send us a message",
-            "We're here to help - message us",
-            "Get instant support via Messenger",
+        variations = [
+            {
+                "message": "Get exclusive offers - sign up today!",
+                "headline": "Chat With Us",
+                "description": "We respond within minutes to all customer inquiries",
+            },
+            {
+                "message": "Limited time offer - claim your discount now",
+                "headline": "Message Our Team",
+                "description": "Our expert team is standing by to help you",
+            },
+            {
+                "message": "We're hiring! Apply through this form",
+                "headline": "Get Answers Now",
+                "description": "Fast and friendly service through Messenger",
+            },
+            {
+                "message": "Free consultation - get started today",
+                "headline": "Personalized Support",
+                "description": "No waiting on hold - just message us directly",
+            },
+            {
+                "message": "Download our premium guide instantly",
+                "headline": "Instant Assistance",
+                "description": "Connect with our specialists for immediate help",
+            },
         ]
-        HEADLINE_VARIANTS = [
-            "Chat With Us",
-            "Message Our Team",
-            "Get Answers Now",
-            "Personalized Support",
-            "Instant Assistance",
-        ]
-        DESCRIPTION_VARIANTS = [
-            "We respond within minutes to all customer inquiries",
-            "Our expert team is standing by to help you",
-            "Fast and friendly service through Messenger",
-            "No waiting on hold - just message us directly",
-            "Connect with our specialists for immediate help",
-        ]
+
+        redirect_url = f"https://m.me/{self.config['PAGE_ID']}"
         creative_params = {
             "name": f"Message Ad {datetime.now().date()}",
             "object_story_spec": {
                 "page_id": self.config["PAGE_ID"],
                 "link_data": {
-                    "image_hash": img["hash"],
-                    "name": HEADLINE_VARIANTS[0],
-                    "message": MESSAGE_VARIANTS[0],
-                    "call_to_action": {
-                        "type": "MESSAGE_PAGE",
-                        "value": {"link": f"https://m.me/{self.config['PAGE_ID']}"},
-                    },
-                    "link": f"https://m.me/{self.config['PAGE_ID']}",
-                    "description": DESCRIPTION_VARIANTS[0],
+                    "link": redirect_url,
+                    "child_attachments": [
+                        {
+                            "description": var["description"],
+                            "image_hash": img["hash"],
+                            "link": redirect_url,
+                            "name": var["headline"],
+                            "message": var["message"],
+                            "call_to_action": {
+                                "type": "SIGN_UP",
+                                "value": {"link": redirect_url},
+                            },
+                        }
+                        for var in variations
+                    ],
                 },
             },
         }
@@ -258,47 +272,57 @@ class FacebookAdsManager:
         """Create lead ad creative with multiple variations"""
         img = self.uploadImage()
 
-        MESSAGE_VARIANTS = [
-            "Get exclusive offers - sign up today!",
-            "Limited time offer - claim your discount now",
-            "We're hiring! Apply through this form",
-            "Free consultation - get started today",
-            "Download our premium guide instantly",
+        variations = [
+            {
+                "message": "Get exclusive offers - sign up today!",
+                "headline": "Chat With Us",
+                "description": "We respond within minutes to all customer inquiries",
+            },
+            {
+                "message": "Limited time offer - claim your discount now",
+                "headline": "Message Our Team",
+                "description": "Our expert team is standing by to help you",
+            },
+            {
+                "message": "We're hiring! Apply through this form",
+                "headline": "Get Answers Now",
+                "description": "Fast and friendly service through Messenger",
+            },
+            {
+                "message": "Free consultation - get started today",
+                "headline": "Personalized Support",
+                "description": "No waiting on hold - just message us directly",
+            },
+            {
+                "message": "Download our premium guide instantly",
+                "headline": "Instant Assistance",
+                "description": "Connect with our specialists for immediate help",
+            },
         ]
-        HEADLINE_VARIANTS = [
-            "Chat With Us",
-            "Message Our Team",
-            "Get Answers Now",
-            "Personalized Support",
-            "Instant Assistance",
-        ]
-        DESCRIPTION_VARIANTS = [
-            "We respond within minutes to all customer inquiries",
-            "Our expert team is standing by to help you",
-            "Fast and friendly service through Messenger",
-            "No waiting on hold - just message us directly",
-            "Connect with our specialists for immediate help",
-        ]
-        LANDING_PAGE_URL = "https://concretedesignpro.com/"
-
+        redirect_url = "https://concretedesignpro.com/"
         creative_params = {
-            "name": f"Lead Ad Variants {datetime.now().date()}",
+            "name": f"Lead Ad - {variations[0]['headline']} - {datetime.now().strftime('%Y-%m-%d')}",
             "object_story_spec": {
                 "page_id": self.config["PAGE_ID"],
                 "link_data": {
-                    "image_hash": img["hash"],
-                    "name": HEADLINE_VARIANTS[0],
-                    "message": MESSAGE_VARIANTS[0],
-                    "call_to_action": {
-                        "type": "SIGN_UP",
-                        "value": {"link": LANDING_PAGE_URL},
-                    },
-                    "description": DESCRIPTION_VARIANTS[0],
-                    "link": LANDING_PAGE_URL,
+                    "link": redirect_url,
+                    "child_attachments": [
+                        {
+                            "description": var["description"],
+                            "image_hash": img["hash"],
+                            "link": redirect_url,
+                            "name": var["headline"],
+                            "message": var["message"],
+                            "call_to_action": {
+                                "type": "SIGN_UP",
+                                "value": {"link": redirect_url},
+                            },
+                        }
+                        for var in variations
+                    ],
                 },
             },
         }
-
         try:
             print("Validating creative...")
             self.account.create_ad_creative(
